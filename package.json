@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "description": "Collection of extensions for pi coding agent",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jayshah5696/pi-agent-extensions.git"
+  },
+  "homepage": "https://github.com/jayshah5696/pi-agent-extensions",
+  "bugs": {
+    "url": "https://github.com/jayshah5696/pi-agent-extensions/issues"
+  },
   "files": [
     "extensions",
     "docs"
@@ -14,6 +22,13 @@
     "extensions"
   ],
   "license": "MIT",
+  "author": {
+    "name": "Jayesh Shah",
+    "url": "https://github.com/jayshah5696"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "pi": {
     "extensions": [
       "./extensions/sessions/index.ts",
