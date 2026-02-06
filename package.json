@@ -1,0 +1,36 @@
+{
+  "name": "pi-agent-extensions",
+  "version": "0.1.0",
+  "description": "Collection of extensions for pi coding agent",
+  "type": "module",
+  "files": [
+    "extensions",
+    "docs"
+  ],
+  "keywords": [
+    "pi-package",
+    "pi",
+    "coding-agent",
+    "extensions"
+  ],
+  "license": "MIT",
+  "pi": {
+    "extensions": [
+      "./extensions/sessions/index.ts",
+      "./extensions/ask-user/index.ts",
+      "./extensions/handoff/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-ai": "*",
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*"
+  },
+  "devDependencies": {
+    "@sinclair/typebox": "^0.34.48",
+    "tsx": "^4.19.0"
+  },
+  "scripts": {
+    "test": "node --import tsx --test 'tests/**/*.test.ts' 'tests/*.test.ts'"
+  }
+}
