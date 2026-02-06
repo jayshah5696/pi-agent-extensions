@@ -1,4 +1,4 @@
-# pi-extensions
+# pi-agent-extensions
 
 A collection of extensions for the [pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent).
 
@@ -38,7 +38,7 @@ pi -e /path/to/pi-agent-extensions/extensions/sessions/index.ts \
 ### From npm (When Published)
 
 ```bash
-pi install npm:pi-extensions
+pi install npm:pi-agent-extensions
 ```
 
 Both extensions will be available immediately after installation.
@@ -77,7 +77,7 @@ You'll see a loader while context is extracted, then an editor to review the han
 ## Uninstall
 
 ```bash
-pi remove pi-extensions
+pi remove pi-agent-extensions
 ```
 
 ## Extensions
@@ -99,7 +99,7 @@ Quick session picker for the pi coding agent. Provides a compact `/sessions` sel
 - Filter by typing (prefix match on session name or cwd)
 - In non-UI mode (`pi -p` or JSON/RPC), sessions are printed to stdout
 
-See [docs/sessions.md](docs/sessions.md) for details.
+See [docs/extensions/sessions.md](docs/extensions/sessions.md) for details.
 
 ### Ask User
 
@@ -132,7 +132,7 @@ ask_user({
 - ⏸️ Custom TUI components (using built-in helpers for now)
 - ⏸️ Tabbed multi-question UI (sequential currently)
 
-See [extensions/ask-user/README.md](extensions/ask-user/README.md) and [docs/ask-user.md](docs/ask-user.md) for details.
+See [extensions/ask-user/README.md](extensions/ask-user/README.md) and [docs/extensions/ask-user.md](docs/extensions/ask-user.md) for details.
 
 ### Handoff
 
@@ -167,7 +167,7 @@ Transfer context to a new focused session. Unlike `/compact` which summarizes ev
 - Key context and decisions
 - Open questions/risks
 
-See [docs/handoff.md](docs/handoff.md) for full documentation.
+See [docs/extensions/handoff.md](docs/extensions/handoff.md) for full documentation.
 
 ## Development
 

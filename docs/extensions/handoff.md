@@ -191,5 +191,5 @@ Tests cover:
 
 ## See Also
 
-- [Spec: Handoff for Pi Agents](./spec_handoff.md) - Full specification
-- [Implementation Log](./handoff_implementation_log.md) - Development history
+- [Spec: Handoff for Pi Agents](../dev/handoff/spec.md) - Full specification
+- [Implementation Log](../dev/handoff/implementation-log.md) - Development history

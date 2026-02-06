@@ -4,13 +4,13 @@
 
 Install the extension locally:
 ```bash
-cd /Users/jshah/Documents/GitHub/pi-sessions
+cd /path/to/pi-agent-extensions
 pi install .
 ```
 
 Or use with `-e` flag:
 ```bash
-pi -e ./extensions/ask-user/index.ts
+pi -e /path/to/pi-agent-extensions/extensions/ask-user/index.ts
 ```
 
 ## Test 1: Simple Text Question (Interactive)
