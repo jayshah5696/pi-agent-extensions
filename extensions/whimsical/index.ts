@@ -93,7 +93,8 @@ export default function (pi: ExtensionAPI) {
       if (ctx.hasUI) {
         ctx.ui.notify(`👋 ${msg}`, "info");
       }
-      ctx.shutdown();
+      // Use setImmediate to ensure shutdown happens after command handler completes
+      setImmediate(() => ctx.shutdown());
     },
   });
 
@@ -104,7 +105,8 @@ export default function (pi: ExtensionAPI) {
       if (ctx.hasUI) {
         ctx.ui.notify(`👋 ${msg}`, "info");
       }
-      ctx.shutdown();
+      // Use setImmediate to ensure shutdown happens after command handler completes
+      setImmediate(() => ctx.shutdown());
     },
   });
 

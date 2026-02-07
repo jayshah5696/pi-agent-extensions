@@ -65,6 +65,9 @@ describe("Whimsical Extension", () => {
     // Run the handler
     await exitHandler("", mockCtx);
 
+    // Wait for setImmediate to run
+    await new Promise(resolve => setImmediate(resolve));
+
     // Assert graceful shutdown was requested
     assert.equal(shutdownCalled, true, "ctx.shutdown() should be called");
     
