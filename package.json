@@ -1,6 +1,6 @@
 {
   "name": "pi-agent-extensions",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Collection of extensions for pi coding agent",
   "type": "module",
   "repository": {
@@ -13,6 +13,7 @@
   },
   "files": [
     "extensions",
+    "themes",
     "docs"
   ],
   "keywords": [
@@ -33,7 +34,24 @@
     "extensions": [
       "./extensions/sessions/index.ts",
       "./extensions/ask-user/index.ts",
-      "./extensions/handoff/index.ts"
+      "./extensions/handoff/index.ts",
+      "./extensions/notify/index.ts",
+      "./extensions/context/index.ts",
+      "./extensions/files/index.ts",
+      "./extensions/review/index.ts",
+      "./extensions/loop/index.ts",
+      "./extensions/answer/index.ts",
+      "./extensions/control/index.ts",
+      "./extensions/cwd-history/index.ts",
+      "./extensions/session-breakdown/index.ts",
+      "./extensions/todos/index.ts",
+      "./extensions/whimsical/index.ts"
+    ],
+    "themes": [
+      "./themes/nightowl.json",
+      "./themes/p10k-inspired.json",
+      "./themes/ghostty-dark.json",
+      "./themes/fzf-bat.json"
     ]
   },
   "peerDependencies": {

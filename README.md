@@ -2,17 +2,48 @@
 
 A collection of extensions for the [pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent).
 
+## Acknowledgments
+
+This project includes extensions adapted from [mitsuhiko/agent-stuff](https://github.com/mitsuhiko/agent-stuff) (Apache 2.0 / MIT License).
+
+**Special thanks to Armin Ronacher ([@mitsuhiko](https://github.com/mitsuhiko))** for creating and open-sourcing these excellent production-ready extensions:
+- `notify.ts` - Desktop notifications via OSC 777
+- `context.ts` - Context breakdown dashboard  
+- `files.ts` - Unified file browser with git integration
+- `review.ts` - Code review system
+- `loop.ts` - Iterative execution loop
+
+Original repository: https://github.com/mitsuhiko/agent-stuff
+
 ## Extensions
 
 | Extension | Type | Description | Status |
 |-----------|------|-------------|--------|
-| **sessions** | Command | Quick session picker with `/sessions` command | ✅ Stable |
-| **ask_user** | Tool | LLM can ask structured questions with options | ⚙️ Beta (v0.1.0) |
-| **handoff** | Command | Transfer context to a new focused session with `/handoff` | ✅ Stable |
+| **sessions** | Command | Quick session picker with `/sessions` | ✅ Stable |
+| **ask_user** | Tool | LLM can ask structured questions | ⚙️ Beta |
+| **handoff** | Command | Goal-driven context transfer `/handoff` | ✅ Stable |
+| **whimsical** | UI | Context-aware loading messages & exit | ✅ Stable |
+| **files** | Tool | Unified file browser & git integration | ✅ Stable |
+| **notify** | Tool | Desktop notifications via OSC 777 | ✅ Stable |
+| **context** | UI | Context breakdown dashboard | ✅ Stable |
+| **review** | Tool | Interactive code review system | ✅ Stable |
+| **loop** | Tool | Iterative execution loop | ✅ Stable |
+| **todos** | Tool | File-based todo list management | ✅ Stable |
+| **control** | RPC | Inter-session communication & control | ⚙️ Beta |
+| **answer** | Tool | Structured Q&A for complex queries | ⚙️ Beta |
+| **cwd_history** | Tracker | Tracks directory changes in context | ✅ Stable |
 
 ## Install
 
-### From Source (Until Published)
+### From npm (Recommended)
+
+```bash
+pi install npm:pi-agent-extensions
+```
+
+All extensions will be available immediately after installation.
+
+### From Source (For Development)
 
 ```bash
 # Clone the repository
@@ -34,14 +65,6 @@ pi -e /path/to/pi-agent-extensions/extensions/sessions/index.ts \
    -e /path/to/pi-agent-extensions/extensions/ask-user/index.ts \
    -e /path/to/pi-agent-extensions/extensions/handoff/index.ts
 ```
-
-### From npm (When Published)
-
-```bash
-pi install npm:pi-agent-extensions
-```
-
-Both extensions will be available immediately after installation.
 
 ## Verify Installation
 
@@ -168,6 +191,57 @@ Transfer context to a new focused session. Unlike `/compact` which summarizes ev
 - Open questions/risks
 
 See [docs/extensions/handoff.md](docs/extensions/handoff.md) for full documentation.
+
+### Whimsical
+
+A personality engine for Pi that makes waiting fun.
+
+**Usage:**
+
+```bash
+/whimsy         # Check status
+/whimsy chaos   # Enable chaos mode (Bollywood + Geek + Tips)
+/exit           # Graceful whimsical exit
+```
+
+**Features:**
+- **Context-Aware:** Messages change based on time of day (Morning/Night) and wait duration.
+- **Personality Modes:**
+  - `chaos`: The full experience (50% Bollywood, 30% Tips, 20% Geek).
+  - `bollywood`: 100% Bollywood dialogues & Hinglish memes.
+  - `geek`: Sci-Fi & Dev humor ("Reticulating splines...").
+- **Smart Exit:** `/exit` and `/bye` commands that ensure a clean terminal shutdown with a funny goodbye message.
+
+See [extensions/whimsical/README.md](extensions/whimsical/README.md) for details.
+
+### Productivity Tools
+
+**Files (`/files`)**
+Unified file explorer with git integration. Adapted from `agent-stuff`.
+- `/files` - Open file browser
+- `Ctrl+Shift+F` - Open file picker
+
+**Todos (`/todos`)**
+File-based todo list management (stores in `.pi/todos/`).
+- `/todos` - List and manage todos
+- Tool: `todo` (create, update, claim, close tasks)
+
+**Notify**
+Allows the agent to send desktop notifications (via terminal OSC 777).
+- Tool: `notify`
+
+**Review**
+Interactive code review system. The agent can request a review, and you can approve/reject/comment on specific files.
+- Tool: `request_review`
+
+**Loop**
+Iterative execution loop for complex tasks.
+- Tool: `run_loop`
+
+**Control**
+RPC-based session control. Allows sessions to talk to each other (e.g., a "manager" session spawning and controlling "worker" sessions).
+- Flag: `--session-control`
+- Tool: `send_to_session`
 
 ## Development
 
