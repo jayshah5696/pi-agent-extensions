@@ -97,10 +97,62 @@ pi
 
 You'll see a loader while context is extracted, then an editor to review the handoff prompt.
 
+## Update
+
+```bash
+# Update to latest version
+pi update pi-agent-extensions
+
+# Or update all packages
+pi --update-packages
+```
+
 ## Uninstall
 
 ```bash
 pi remove pi-agent-extensions
+```
+
+## Troubleshooting
+
+### Extensions not showing after install
+
+If you installed via `npm install` or `npm update`, the package won't be registered with Pi. You must use **Pi's package manager**:
+
+```bash
+# Wrong (npm only - won't register with Pi)
+npm install pi-agent-extensions
+
+# Correct (registers with Pi)
+pi install npm:pi-agent-extensions
+```
+
+### Verify installation
+
+Check that the package appears in your settings:
+
+```bash
+cat ~/.pi/agent/settings.json | grep pi-agent-extensions
+```
+
+You should see:
+```json
+"packages": [
+  "npm:pi-agent-extensions",
+  ...
+]
+```
+
+### Local development vs npm
+
+When running Pi from the `pi-agent-extensions` directory, it loads **local** extensions (your development copy), not the npm-installed version. This is useful for development but can cause confusion.
+
+To test the npm version, run Pi from a different directory:
+
+```bash
+cd ~/some-other-project
+pi
+# Check: should show npm:pi-agent-extensions in [Extensions]
 ```
 
 ## Extensions
