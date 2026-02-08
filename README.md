@@ -10,6 +10,12 @@ Jadoo Agent experimentation and execution layer.
 | **LLM Evaluation** | `projects/llm-eval/` | Benchmarking and trace analysis | [PLANNED] | `uv`, `exa`, `eval` | [[LLM-Eval]] |
 | **Daily Sync** | `scripts/` | Automation for notes and code bridge | [ACTIVE] | `uv`, `python` | [[Daily-Sync]] |
 
+## Documentation & Standards
+
+The definitive guide for this setup is documented in Obsidian:
+- **Architecture & Workflow:** [[Jadoo-Labs-Setup]]
+- **Security Protocols:** [[Security-Audit-2026-02-07]]
+
 ## Guidelines
 
 - **Standard:** Use `uv init` for all new sub-projects.
