@@ -1,0 +1,7 @@
+projects/
+scratch/
+data/raw/
+data/processed/
+data/features/
+log/
+.env
