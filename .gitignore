@@ -1,7 +1,20 @@
-projects/
-scratch/
-data/raw/
-data/processed/
-data/features/
-log/
+# Ignore local environment and secrets
 .env
+.venv
+__pycache__/
+*.pyc
+
+# Project-specific ignores
+# We track project structure but ignore large local artifacts
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/features/*
+!data/features/.gitkeep
+log/*
+!log/.gitkeep
+scratch/*
+!scratch/.gitkeep
+results/*
+!results/.gitkeep
