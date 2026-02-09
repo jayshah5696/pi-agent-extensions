@@ -6,6 +6,7 @@ Self-hosted CouchDB hub for Obsidian Self-hosted LiveSync, following the same Do
 
 - `docker-compose.yml` - CouchDB service (`couchdb:3.3.3`) on external `tailscale` Docker network
 - `.env` - local configuration placeholders (no secrets committed)
+- `scripts/verify_setup.sh` - validates `.env` keys and runs `docker compose config`
 
 ## Homeserver Deployment (Debian 12 Mini PC)
 
@@ -33,13 +34,23 @@ COUCHDB_DOMAIN=obsidian-sync.jay-hirajoshi.ts.net
 docker network create tailscale || true
 ```
 
-### 4) Start CouchDB
+### 4) Run setup verification
+
+```bash
+make test
+```
+
+What `make test` does:
+- Runs `./scripts/verify_setup.sh` to verify `.env` keys and Compose syntax
+- Attempts `curl -I http://localhost:5984` as a local mock connectivity check
+
+### 5) Start CouchDB
 
 ```bash
 docker compose up -d
 ```
 
-### 5) Validate from a Tailscale-connected device
+### 6) Validate from a Tailscale-connected device
 
 ```bash
 curl -u "$COUCHDB_USER:$COUCHDB_PASSWORD" "http://$COUCHDB_DOMAIN:5984/_up"
