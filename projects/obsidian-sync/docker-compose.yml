@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  couchdb:
+    image: couchdb:3.3.3
+    container_name: obsidian-couchdb
+    restart: unless-stopped
+    environment:
+      COUCHDB_USER: ${COUCHDB_USER}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD}
+    volumes:
+      - ./data:/opt/couchdb/data
+      - ./config:/opt/couchdb/etc/local.d
+    networks:
+      - tailscale
+    # No public ports. Tailscale handles ingress.
+
+networks:
+  tailscale:
+    external: true
