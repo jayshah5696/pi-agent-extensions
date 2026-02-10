@@ -32,6 +32,7 @@ Original repository: https://github.com/mitsuhiko/agent-stuff
 | **control** | RPC | Inter-session communication & control | ⚙️ Beta |
 | **answer** | Tool | Structured Q&A for complex queries | ⚙️ Beta |
 | **cwd_history** | Tracker | Tracks directory changes in context | ✅ Stable |
+| **nvidia-nim** | Command | Nvidia NIM auth & config | ✅ Stable |
 
 ## Install
 
@@ -294,6 +295,10 @@ Iterative execution loop for complex tasks.
 RPC-based session control. Allows sessions to talk to each other (e.g., a "manager" session spawning and controlling "worker" sessions).
 - Flag: `--session-control`
 - Tool: `send_to_session`
+
+**Nvidia NIM (`/nvidia-nim-auth`)**
+Authenticate and configure Nvidia NIM as an LLM provider.
+- Command: `/nvidia-nim-auth` (alias: `/nvidia-auth`)
 
 ## Development
 

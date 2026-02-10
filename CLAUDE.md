@@ -43,6 +43,8 @@ extensions/
 
 **Handoff** (`extensions/handoff/`): Uses LLM completion to extract structured context (relevant files, commands, decisions, open questions) from conversation history. Validates extracted files against actual conversation text to prevent hallucinations. Configurable via `.pi/settings.json` under `handoff` key. Supports retry logic on JSON parse failure.
 
+**Nvidia NIM** (`extensions/nvidia-nim/`): Registers `/nvidia-nim-auth` to interactively prompt for an API key and default model. Writes standard OpenAI-compatible provider configuration (with `baseUrl` pointing to Nvidia NIM) to `~/.pi/settings.json`.
+
 ### Peer Dependencies (provided by Pi runtime)
 
 - `@mariozechner/pi-coding-agent` — Extension API, session management
