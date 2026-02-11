@@ -4,7 +4,7 @@ Self-hosted CouchDB hub for Obsidian Self-hosted LiveSync, following the same Do
 
 ## Files
 
-- `docker-compose.yml` - CouchDB service (`couchdb:3.3.3`) on external `tailscale` Docker network
+- `docker-compose.yml` - CouchDB service (`couchdb:3.3.3 or latest one`) on external `tailscale` Docker network
 - `.env` - local configuration placeholders (no secrets committed)
 - `scripts/verify_setup.sh` - validates `.env` keys and runs `docker compose config`
 
@@ -13,8 +13,8 @@ Self-hosted CouchDB hub for Obsidian Self-hosted LiveSync, following the same Do
 ### 1) Prepare directory
 
 ```bash
-mkdir -p ~/homelab/obsidian-sync
-cd ~/homelab/obsidian-sync
+mkdir -p ~/homelab/docker/obsidian-sync
+cd ~/homelab/docker/obsidian-sync
 # copy this project's files into this directory
 ```
 
