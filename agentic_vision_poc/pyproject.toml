@@ -1,0 +1,10 @@
+[project]
+name = "agentic-vision-poc"
+version = "0.1.0"
+description = "Agentic vision proof-of-concept with Gemini code execution"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "google-genai>=1.62.0",
+    "pillow>=12.1.1",
+]

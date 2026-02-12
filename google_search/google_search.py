@@ -11,10 +11,10 @@ def search(query: str):
 
     client = genai.Client(api_key=api_key)
     
-    # Using gemini-1.5-flash for speed and cost
+    # Using gemini-3-flash-preview for high-fidelity grounded search (2026 Gold Standard)
     # google_search is a native tool in the Gemini API
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-3-flash-preview",
         contents=query,
         config=types.GenerateContentConfig(
             tools=[types.Tool(google_search=types.GoogleSearch())]

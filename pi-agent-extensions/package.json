@@ -1,0 +1,34 @@
+{
+  "name": "pi-agent-extensions",
+  "version": "0.1.0",
+  "description": "Pi Agent extension pack: ask_user, handoff, sessions, whimsical",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "coding-agent",
+    "extensions"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "extensions",
+    "README.md"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/ask-user/index.ts",
+      "./extensions/handoff/index.ts",
+      "./extensions/sessions/index.ts",
+      "./extensions/whimsical/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-ai": "*",
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*",
+    "@sinclair/typebox": "*"
+  }
+}
