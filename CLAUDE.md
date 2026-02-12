@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
 **pi-agent-extensions** — A collection of TypeScript extensions for the [Pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent). Provides three extensions: `sessions` (session picker command), `ask-user` (structured user input tool), and `handoff` (goal-driven context transfer command).
