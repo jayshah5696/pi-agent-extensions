@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
 **pi-agent-extensions** — A collection of TypeScript extensions for the [Pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent). Provides three extensions: `sessions` (session picker command), `ask-user` (structured user input tool), and `handoff` (goal-driven context transfer command).
@@ -42,6 +40,8 @@ extensions/
 **Ask User** (`extensions/ask-user/`): LLM-callable tool with TypeBox-validated input schema. Three modes — interactive (TUI `Editor`/`SelectList`), print (writes `.pi/pending-questions.json` for async response), and RPC. Always includes an "Other" free-text option. Answers persisted to session entries.
 
 **Handoff** (`extensions/handoff/`): Uses LLM completion to extract structured context (relevant files, commands, decisions, open questions) from conversation history. Validates extracted files against actual conversation text to prevent hallucinations. Configurable via `.pi/settings.json` under `handoff` key. Supports retry logic on JSON parse failure.
+
+**Nvidia NIM** (`extensions/nvidia-nim/`): Registers `/nvidia-nim-auth` and `/nvidia-nim-models` to configure API key + model list (one `org/model` per line). Persists config to `~/.pi/nvidia-nim.json`, registers provider dynamically via `pi.registerProvider()`, and updates `~/.pi/agent/settings.json` `enabledModels` so models appear in scoped `/model` and Ctrl+P cycling.
 
 ### Peer Dependencies (provided by Pi runtime)
 

@@ -45,7 +45,8 @@
       "./extensions/cwd-history/index.ts",
       "./extensions/session-breakdown/index.ts",
       "./extensions/todos/index.ts",
-      "./extensions/whimsical/index.ts"
+      "./extensions/whimsical/index.ts",
+      "./extensions/nvidia-nim/index.ts"
     ],
     "themes": [
       "./themes/nightowl.json",
