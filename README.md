@@ -298,7 +298,10 @@ RPC-based session control. Allows sessions to talk to each other (e.g., a "manag
 
 **Nvidia NIM (`/nvidia-nim-auth`)**
 Authenticate and configure Nvidia NIM as an LLM provider.
-- Command: `/nvidia-nim-auth` (alias: `/nvidia-auth`)
+- Commands: `/nvidia-nim-auth` (alias: `/nvidia-auth`), `/nvidia-nim-models`
+- Saves provider config to `~/.pi/nvidia-nim.json`
+- Adds configured models to `~/.pi/agent/settings.json` `enabledModels` for scoped `/model` + Ctrl+P cycling
+- Model IDs must be `org/model` (exactly one `/`), e.g. `moonshotai/kimi-k2.5` (not `nvidia/moonshotai/kimi-k2.5`)
 
 ## Development
 
