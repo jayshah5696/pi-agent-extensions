@@ -1,99 +1,442 @@
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { BOLLYWOOD_MESSAGES, CONTEXT_MESSAGES, PI_TIPS, WHIMSICAL_VERBS, GOODBYE_MESSAGES } from "./messages.js";
+import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
+import { Key, Loader, matchesKey } from "@mariozechner/pi-tui";
+import * as fs from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
+import {
+  ABSURD_NERD_LINES,
+  BOSS_PHASE_MESSAGES,
+  FAKE_COMPILER_PANIC,
+  GOODBYE_MESSAGES_BY_BUCKET,
+  TERMINAL_MEME_LINES,
+} from "./messages.js";
 
-type WhimsyMode = 'chaos' | 'classic' | 'bollywood' | 'geek';
+type ChaosBucket = "A" | "B" | "C" | "D";
 
-interface WhimsyState {
-  mode: WhimsyMode;
-  enabled: boolean;
-}
+const SPINNER_PRESETS = {
+  sleekOrbit: ["◜", "◠", "◝", "◞", "◡", "◟"],
+  neonPulse: ["∙∙●∙∙", "∙●∙●∙", "●∙∙∙●", "∙●∙●∙"],
+  scanline: ["▏", "▎", "▍", "▌", "▋", "▊", "▉", "█", "▉", "▊", "▋", "▌", "▍", "▎"],
+  chevronFlow: [">>>", ">>·", ">··", "···", "·<<", "<<<"],
+  matrixGlyph: ["┆", "╎", "┊", "╏", "┋"],
+} as const;
 
-const state: WhimsyState = {
-  mode: 'chaos', // Default: The mix you requested
-  enabled: true,
+type SpinnerPresetId = keyof typeof SPINNER_PRESETS;
+
+const SPINNER_PRESET_ORDER: SpinnerPresetId[] = [
+  "sleekOrbit",
+  "neonPulse",
+  "scanline",
+  "chevronFlow",
+  "matrixGlyph",
+];
+
+const SPINNER_PRESET_LABELS: Record<SpinnerPresetId, string> = {
+  sleekOrbit: "Sleek Orbit",
+  neonPulse: "Neon Pulse",
+  scanline: "Scanline",
+  chevronFlow: "Chevron Flow",
+  matrixGlyph: "Matrix Glyph",
 };
 
-function getTimeContext(): 'morning' | 'night' | 'day' {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 11) return 'morning';
-  if (hour >= 0 && hour < 4) return 'night';
-  return 'day';
+interface WhimsyState {
+  enabled: boolean;
+  chaosWeights: Record<ChaosBucket, number>;
+  spinnerPreset: SpinnerPresetId;
 }
 
-function pickMessage(mode: WhimsyMode, durationSeconds: number = 0): string {
-  // 1. Check for Long Wait (Overrides everything else if waiting > 5s)
-  if (durationSeconds > 5 && Math.random() > 0.5) {
-     const longMsgs = CONTEXT_MESSAGES.longWait;
-     return longMsgs[Math.floor(Math.random() * longMsgs.length)];
-  }
-
-  // 2. Check for Time Context (Morning/Night special messages)
-  const timeContext = getTimeContext();
-  if (timeContext !== 'day' && Math.random() > 0.7) {
-    const timeMsgs = CONTEXT_MESSAGES[timeContext];
-    return timeMsgs[Math.floor(Math.random() * timeMsgs.length)];
-  }
-
-  // 3. Mode-based Selection
-  if (mode === 'classic') {
-    return WHIMSICAL_VERBS[Math.floor(Math.random() * WHIMSICAL_VERBS.length)];
-  }
-  
-  if (mode === 'bollywood') {
-    return BOLLYWOOD_MESSAGES[Math.floor(Math.random() * BOLLYWOOD_MESSAGES.length)];
-  }
-  
-  if (mode === 'geek') {
-    // Re-use gerunds + tips for now as "geek" substitute + some custom logic could go here
-    return PI_TIPS[Math.floor(Math.random() * PI_TIPS.length)]; 
-  }
-
-  // CHAOS MODE (The requested 50/30/20 mix)
-  const roll = Math.random();
-  
-  if (roll < 0.5) { 
-    // 50% Bollywood
-    return BOLLYWOOD_MESSAGES[Math.floor(Math.random() * BOLLYWOOD_MESSAGES.length)];
-  } else if (roll < 0.8) { 
-    // 30% Tips
-    return PI_TIPS[Math.floor(Math.random() * PI_TIPS.length)];
-  } else { 
-    // 20% Classic/Smart (Gerunds or Context)
-    return WHIMSICAL_VERBS[Math.floor(Math.random() * WHIMSICAL_VERBS.length)];
-  }
+interface PersistedWhimsyConfig {
+  enabled?: boolean;
+  weights?: Partial<Record<ChaosBucket, number>>;
+  spinnerPreset?: string;
 }
 
-export default function (pi: ExtensionAPI) {
-  // Register Command
-  pi.registerCommand("whimsy", {
-    description: "Configure whimsical loading messages",
-    handler: async (args) => {
-      const subCommand = args[0];
-      if (subCommand === 'off') {
-        state.enabled = false;
-        return "Whimsical messages disabled.";
-      }
-      if (subCommand === 'on') {
-        state.enabled = true;
-        return "Whimsical messages enabled.";
-      }
-      if (['chaos', 'classic', 'bollywood', 'geek'].includes(subCommand)) {
-        state.mode = subCommand as WhimsyMode;
-        return `Whimsy mode set to: ${state.mode}`;
-      }
-      return "Usage: /whimsy [chaos|classic|bollywood|geek|on|off]";
+interface TunerResult {
+  weights: Record<ChaosBucket, number>;
+  spinnerPreset: SpinnerPresetId;
+}
+
+const BUCKET_META: Array<{ key: ChaosBucket; title: string; description: string }> = [
+  { key: "A", title: "Absurd Nerd Lines", description: "Grepping the void, refactoring by vibes" },
+  { key: "B", title: "Boss Progression", description: "Phase-based messages by wait duration" },
+  { key: "C", title: "Fake Compiler Panic", description: "Chaotic fake diagnostics" },
+  { key: "D", title: "Terminal Meme Lines", description: "CLI one-liners and git jokes" },
+];
+
+const DEFAULT_WEIGHTS: Record<ChaosBucket, number> = { A: 25, B: 25, C: 25, D: 25 };
+const DEFAULT_SPINNER_PRESET: SpinnerPresetId = "sleekOrbit";
+
+const state: WhimsyState = {
+  enabled: true,
+  chaosWeights: { ...DEFAULT_WEIGHTS },
+  spinnerPreset: DEFAULT_SPINNER_PRESET,
+};
+
+let loadedGlobalState = false;
+let loaderSpinnerPatched = false;
+
+const MIN_WORKING_MESSAGE_INTERVAL_MS = 10_000;
+const SPINNER_FRAME_INTERVAL_MS = 100;
+
+let activeWhimsyTicker: ReturnType<typeof setInterval> | null = null;
+let activeTurnStartedAtMs = Date.now();
+let nextWorkingMessageAtMs = Date.now();
+let currentWorkingMessage = "";
+
+function pick<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function getSpinnerFrames(preset: SpinnerPresetId): readonly string[] {
+  return SPINNER_PRESETS[preset];
+}
+
+function patchGlobalLoaderSpinner(): void {
+  if (loaderSpinnerPatched) return;
+
+  const proto = Loader.prototype as any;
+  const originalUpdateDisplay = proto.updateDisplay;
+  if (typeof originalUpdateDisplay !== "function") return;
+
+  proto.updateDisplay = function patchedUpdateDisplay(this: any, ...args: unknown[]) {
+    const frames = getSpinnerFrames(state.spinnerPreset);
+    if (Array.isArray(frames) && frames.length > 0) {
+      this.frames = [...frames];
+      const current = Number(this.currentFrame ?? 0);
+      this.currentFrame = Number.isFinite(current) ? current % this.frames.length : 0;
     }
+    return originalUpdateDisplay.apply(this, args);
+  };
+
+  loaderSpinnerPatched = true;
+}
+
+function formatWeights(weights: Record<ChaosBucket, number>): string {
+  return `A=${weights.A}% B=${weights.B}% C=${weights.C}% D=${weights.D}%`;
+}
+
+function formatStatus(): string {
+  return `Whimsy ${state.enabled ? "on" : "off"} • ${formatWeights(state.chaosWeights)} • spinner=${SPINNER_PRESET_LABELS[state.spinnerPreset]}`;
+}
+
+function pickBossProgression(durationSeconds: number): string {
+  if (durationSeconds < 5) return pick(BOSS_PHASE_MESSAGES.early);
+  if (durationSeconds < 15) return pick(BOSS_PHASE_MESSAGES.mid);
+  return pick(BOSS_PHASE_MESSAGES.late);
+}
+
+function chooseWeightedBucket(weights: Record<ChaosBucket, number>): ChaosBucket {
+  const roll = Math.random() * 100;
+  if (roll < weights.A) return "A";
+  if (roll < weights.A + weights.B) return "B";
+  if (roll < weights.A + weights.B + weights.C) return "C";
+  return "D";
+}
+
+function pickWorkingMessageFor(weights: Record<ChaosBucket, number>, durationSeconds: number): string {
+  const selected = chooseWeightedBucket(weights);
+  if (selected === "A") return pick(ABSURD_NERD_LINES);
+  if (selected === "B") return pickBossProgression(durationSeconds);
+  if (selected === "C") return pick(FAKE_COMPILER_PANIC);
+  return pick(TERMINAL_MEME_LINES);
+}
+
+function pickGoodbyeMessage(): string {
+  const selected = chooseWeightedBucket(state.chaosWeights);
+  return pick(GOODBYE_MESSAGES_BY_BUCKET[selected]);
+}
+
+function adjustWeightsByStep(
+  weights: Record<ChaosBucket, number>,
+  selected: ChaosBucket,
+  delta: 5 | -5,
+): boolean {
+  const next = weights[selected] + delta;
+  if (next < 0) return false;
+  weights[selected] = next;
+  return true;
+}
+
+function sanitizeWeights(raw?: Partial<Record<ChaosBucket, number>>): Record<ChaosBucket, number> {
+  if (!raw) return { ...DEFAULT_WEIGHTS };
+
+  const keys: ChaosBucket[] = ["A", "B", "C", "D"];
+  const out: Record<ChaosBucket, number> = { A: 0, B: 0, C: 0, D: 0 };
+
+  for (const key of keys) {
+    const v = Number(raw[key] ?? 0);
+    if (!Number.isFinite(v) || v < 0 || v % 5 !== 0) return { ...DEFAULT_WEIGHTS };
+    out[key] = v;
+  }
+
+  const total = out.A + out.B + out.C + out.D;
+  if (total !== 100) return { ...DEFAULT_WEIGHTS };
+  return out;
+}
+
+function sanitizeSpinnerPreset(raw?: string): SpinnerPresetId {
+  if (!raw) return DEFAULT_SPINNER_PRESET;
+  return (SPINNER_PRESET_ORDER as string[]).includes(raw) ? (raw as SpinnerPresetId) : DEFAULT_SPINNER_PRESET;
+}
+
+function cycleSpinnerPreset(current: SpinnerPresetId, direction: -1 | 1): SpinnerPresetId {
+  const index = SPINNER_PRESET_ORDER.indexOf(current);
+  const next = (index + direction + SPINNER_PRESET_ORDER.length) % SPINNER_PRESET_ORDER.length;
+  return SPINNER_PRESET_ORDER[next];
+}
+
+function getSettingsPath(): string {
+  return path.join(os.homedir(), ".pi", "agent", "settings.json");
+}
+
+async function loadStateFromSettings(): Promise<void> {
+  const settingsPath = getSettingsPath();
+  try {
+    const text = await fs.readFile(settingsPath, "utf-8");
+    const parsed = JSON.parse(text) as Record<string, unknown>;
+    const whimsical = (parsed?.whimsical ?? {}) as PersistedWhimsyConfig;
+
+    state.enabled = typeof whimsical.enabled === "boolean" ? whimsical.enabled : true;
+    state.chaosWeights = sanitizeWeights(whimsical.weights);
+    state.spinnerPreset = sanitizeSpinnerPreset(whimsical.spinnerPreset);
+  } catch {
+    state.enabled = true;
+    state.chaosWeights = { ...DEFAULT_WEIGHTS };
+    state.spinnerPreset = DEFAULT_SPINNER_PRESET;
+  }
+}
+
+async function saveStateToSettings(): Promise<void> {
+  const settingsPath = getSettingsPath();
+  const dir = path.dirname(settingsPath);
+
+  let parsed: Record<string, unknown> = {};
+  try {
+    const text = await fs.readFile(settingsPath, "utf-8");
+    parsed = text.trim() ? (JSON.parse(text) as Record<string, unknown>) : {};
+  } catch {
+    parsed = {};
+  }
+
+  parsed.whimsical = {
+    enabled: state.enabled,
+    weights: { ...state.chaosWeights },
+    spinnerPreset: state.spinnerPreset,
+  } satisfies PersistedWhimsyConfig;
+
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(settingsPath, JSON.stringify(parsed, null, 2), "utf-8");
+}
+
+async function ensureStateLoaded(): Promise<void> {
+  if (loadedGlobalState) return;
+  await loadStateFromSettings();
+  loadedGlobalState = true;
+}
+
+function stopActiveTicker(): void {
+  if (activeWhimsyTicker) {
+    clearInterval(activeWhimsyTicker);
+    activeWhimsyTicker = null;
+  }
+}
+
+function renderWorkingLine(): string {
+  // Interactive mode already renders its own spinner glyph.
+  // Return message-only text to avoid double spinners.
+  return currentWorkingMessage;
+}
+
+async function openWeightsTuner(ctx: ExtensionCommandContext) {
+  if (!ctx.hasUI) return null;
+
+  return ctx.ui.custom<TunerResult | null>((tui, theme, _kb, done) => {
+    const workingWeights = { ...state.chaosWeights };
+    let workingSpinnerPreset: SpinnerPresetId = state.spinnerPreset;
+    let selectedRow = 0; // 0-3 buckets, 4 spinner row
+    let warning = "";
+
+    const previewStartedAt = Date.now();
+    let previewSpinnerIndex = 0;
+    let nextPreviewMessageAt = Date.now() + MIN_WORKING_MESSAGE_INTERVAL_MS;
+    let previewMessage = pickWorkingMessageFor(workingWeights, 0);
+
+    const previewTicker = setInterval(() => {
+      previewSpinnerIndex += 1;
+      const now = Date.now();
+      if (now >= nextPreviewMessageAt) {
+        const elapsed = (now - previewStartedAt) / 1000;
+        previewMessage = pickWorkingMessageFor(workingWeights, elapsed);
+        nextPreviewMessageAt = now + MIN_WORKING_MESSAGE_INTERVAL_MS;
+      }
+      tui.requestRender();
+    }, SPINNER_FRAME_INTERVAL_MS);
+
+    const finish = (result: TunerResult | null) => {
+      clearInterval(previewTicker);
+      done(result);
+    };
+
+    function totalWeight(): number {
+      return workingWeights.A + workingWeights.B + workingWeights.C + workingWeights.D;
+    }
+
+    function currentPreviewFrame(): string {
+      const frames = getSpinnerFrames(workingSpinnerPreset);
+      return frames[previewSpinnerIndex % frames.length];
+    }
+
+    function render(width: number): string[] {
+      const lines: string[] = [];
+      const hr = theme.fg("accent", "─".repeat(Math.max(8, width)));
+      const add = (line: string) => lines.push(line);
+      const total = totalWeight();
+      const canSave = total === 100;
+
+      add(hr);
+      add(theme.fg("accent", theme.bold(" Whimsy Chaos Mixer")));
+      add(theme.fg("muted", " ↑/↓ move • ←/→ adjust • Enter save (only when total=100) • Esc cancel"));
+      add("");
+
+      for (let i = 0; i < BUCKET_META.length; i++) {
+        const bucket = BUCKET_META[i];
+        const focused = i === selectedRow;
+        const prefix = focused ? theme.fg("accent", "> ") : "  ";
+        const title = `${bucket.key}. ${bucket.title}`;
+        const pct = `${workingWeights[bucket.key]}%`;
+        const main = focused ? theme.fg("accent", `${title.padEnd(28)} ${pct}`) : `${title.padEnd(28)} ${pct}`;
+        add(prefix + main);
+        add(`   ${theme.fg("dim", bucket.description)}`);
+      }
+
+      add("");
+      const spinnerFocused = selectedRow === BUCKET_META.length;
+      const spinnerPrefix = spinnerFocused ? theme.fg("accent", "> ") : "  ";
+      const presetLabel = SPINNER_PRESET_LABELS[workingSpinnerPreset];
+      const sampleFrames = getSpinnerFrames(workingSpinnerPreset).slice(0, 4).join(" ");
+      const spinnerLine = `Spinner Preset: ${presetLabel}  [${sampleFrames}]`;
+      add(spinnerPrefix + (spinnerFocused ? theme.fg("accent", spinnerLine) : spinnerLine));
+      add(`   ${theme.fg("dim", "Use ←/→ on this row to switch between 5 presets")}`);
+
+      add("");
+      add(theme.fg("muted", " Preview"));
+      add(` ${theme.fg("accent", currentPreviewFrame())} ${theme.fg("text", previewMessage)}`);
+
+      add("");
+      add(canSave ? theme.fg("text", ` Total: ${total}%`) : theme.fg("warning", ` Total: ${total}%`));
+      if (!canSave) add(theme.fg("warning", " ⚠ Total must be exactly 100% to save."));
+      if (warning) add(theme.fg("warning", ` ⚠ ${warning}`));
+      add(hr);
+
+      return lines;
+    }
+
+    function handleInput(data: string) {
+      if (matchesKey(data, Key.up)) {
+        warning = "";
+        selectedRow = Math.max(0, selectedRow - 1);
+        tui.requestRender();
+        return;
+      }
+      if (matchesKey(data, Key.down)) {
+        warning = "";
+        selectedRow = Math.min(BUCKET_META.length, selectedRow + 1);
+        tui.requestRender();
+        return;
+      }
+      if (matchesKey(data, Key.left)) {
+        warning = "";
+        if (selectedRow < BUCKET_META.length) {
+          adjustWeightsByStep(workingWeights, BUCKET_META[selectedRow].key, -5);
+        } else {
+          workingSpinnerPreset = cycleSpinnerPreset(workingSpinnerPreset, -1);
+        }
+        tui.requestRender();
+        return;
+      }
+      if (matchesKey(data, Key.right)) {
+        warning = "";
+        if (selectedRow < BUCKET_META.length) {
+          adjustWeightsByStep(workingWeights, BUCKET_META[selectedRow].key, 5);
+        } else {
+          workingSpinnerPreset = cycleSpinnerPreset(workingSpinnerPreset, 1);
+        }
+        tui.requestRender();
+        return;
+      }
+      if (matchesKey(data, Key.enter)) {
+        if (totalWeight() !== 100) {
+          warning = "Cannot save until total equals 100%.";
+          tui.requestRender();
+          return;
+        }
+        finish({ weights: workingWeights, spinnerPreset: workingSpinnerPreset });
+        return;
+      }
+      if (matchesKey(data, Key.escape)) {
+        finish(null);
+      }
+    }
+
+    return {
+      render,
+      invalidate: () => undefined,
+      handleInput,
+    };
+  });
+}
+
+export default function whimsicalExtension(pi: ExtensionAPI) {
+  patchGlobalLoaderSpinner();
+
+  pi.registerCommand("whimsy", {
+    description: "Open chaos mixer + spinner tuner",
+    handler: async (args, ctx) => {
+      await ensureStateLoaded();
+      const sub = (args[0] ?? "").toLowerCase();
+
+      if (sub === "on") {
+        state.enabled = true;
+        await saveStateToSettings();
+        return "Whimsy enabled.";
+      }
+      if (sub === "off") {
+        state.enabled = false;
+        stopActiveTicker();
+        if (ctx.hasUI) ctx.ui.setWorkingMessage();
+        await saveStateToSettings();
+        return "Whimsy disabled.";
+      }
+      if (sub === "reset") {
+        state.chaosWeights = { ...DEFAULT_WEIGHTS };
+        state.spinnerPreset = DEFAULT_SPINNER_PRESET;
+        await saveStateToSettings();
+        return `Whimsy reset: ${formatStatus()}`;
+      }
+      if (sub === "status") {
+        return formatStatus();
+      }
+
+      if (!ctx.hasUI) {
+        return `${formatStatus()}\nUse interactive mode and run /whimsy to tune weights + spinner.`;
+      }
+
+      const tuned = await openWeightsTuner(ctx);
+      if (!tuned) return "Whimsy unchanged.";
+
+      state.chaosWeights = tuned.weights;
+      state.spinnerPreset = tuned.spinnerPreset;
+      await saveStateToSettings();
+      return `Whimsy updated: ${formatStatus()}`;
+    },
   });
 
-  // Register /exit and /bye
   pi.registerCommand("exit", {
     description: "Exit Pi with a whimsical goodbye",
     handler: async (_args, ctx) => {
-      const msg = GOODBYE_MESSAGES[Math.floor(Math.random() * GOODBYE_MESSAGES.length)];
-      if (ctx.hasUI) {
-        ctx.ui.notify(`👋 ${msg}`, "info");
-      }
-      // Use setImmediate to ensure shutdown happens after command handler completes
+      await ensureStateLoaded();
+      const msg = pickGoodbyeMessage();
+      if (ctx.hasUI) ctx.ui.notify(`👋 ${msg}`, "info");
       setImmediate(() => ctx.shutdown());
     },
   });
@@ -101,45 +444,43 @@ export default function (pi: ExtensionAPI) {
   pi.registerCommand("bye", {
     description: "Exit Pi with a whimsical goodbye (alias)",
     handler: async (_args, ctx) => {
-      const msg = GOODBYE_MESSAGES[Math.floor(Math.random() * GOODBYE_MESSAGES.length)];
-      if (ctx.hasUI) {
-        ctx.ui.notify(`👋 ${msg}`, "info");
-      }
-      // Use setImmediate to ensure shutdown happens after command handler completes
+      await ensureStateLoaded();
+      const msg = pickGoodbyeMessage();
+      if (ctx.hasUI) ctx.ui.notify(`👋 ${msg}`, "info");
       setImmediate(() => ctx.shutdown());
     },
   });
 
-  // Turn Start Logic
   pi.on("turn_start", async (_event, ctx) => {
+    await ensureStateLoaded();
     if (!state.enabled) return;
 
-    // Initial Message
-    ctx.ui.setWorkingMessage(pickMessage(state.mode));
+    stopActiveTicker();
 
-    // Dynamic Updates for Long Turns
-    const startTime = Date.now();
-    // Update every 10 seconds to give time to read long messages
-    const interval = setInterval(() => {
+    activeTurnStartedAtMs = Date.now();
+    nextWorkingMessageAtMs = activeTurnStartedAtMs + MIN_WORKING_MESSAGE_INTERVAL_MS;
+    currentWorkingMessage = pickWorkingMessageFor(state.chaosWeights, 0);
+
+    ctx.ui.setWorkingMessage(renderWorkingLine());
+
+    activeWhimsyTicker = setInterval(() => {
       if (!state.enabled) {
-        clearInterval(interval);
+        stopActiveTicker();
         return;
       }
-      
-      const elapsed = (Date.now() - startTime) / 1000;
-      ctx.ui.setWorkingMessage(pickMessage(state.mode, elapsed));
-    }, 10000);
 
-    // Store interval in a weak map or similar if we needed to clear it externally, 
-    // but turn_end is sufficient.
-    (ctx as any)._whimsyInterval = interval;
+      const now = Date.now();
+      if (now >= nextWorkingMessageAtMs) {
+        const elapsed = (now - activeTurnStartedAtMs) / 1000;
+        currentWorkingMessage = pickWorkingMessageFor(state.chaosWeights, elapsed);
+        nextWorkingMessageAtMs = now + MIN_WORKING_MESSAGE_INTERVAL_MS;
+        ctx.ui.setWorkingMessage(renderWorkingLine());
+      }
+    }, SPINNER_FRAME_INTERVAL_MS);
   });
 
-  // Turn End Logic
-  pi.on("turn_end", async (_event, ctx) => {
-    ctx.ui.setWorkingMessage(); // Reset
-    if ((ctx as any)._whimsyInterval) {
-      clearInterval((ctx as any)._whimsyInterval);
-    }
+  // Keep running until the next turn_start replaces cadence.
+  pi.on("turn_end", async () => {
+    // no-op by design
   });
 }
