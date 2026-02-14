@@ -1,7 +1,7 @@
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import whimsicalExtension from "../extensions/whimsical/index.js";
-import { GOODBYE_MESSAGES } from "../extensions/whimsical/messages.js";
+import { GOODBYE_MESSAGES_BY_BUCKET } from "../extensions/whimsical/messages.js";
 
 // Mock types
 type CommandHandler = (args: string, ctx: any) => Promise<void>;
@@ -73,6 +73,7 @@ describe("Whimsical Extension", () => {
     
     // Assert notification was shown with a goodbye message
     assert.ok(notifyMessage.startsWith("👋 "), "Should show goodbye message");
-    assert.ok(GOODBYE_MESSAGES.some(msg => notifyMessage.includes(msg)), "Should use a message from GOODBYE_MESSAGES");
+    const allGoodbyeMessages = Object.values(GOODBYE_MESSAGES_BY_BUCKET).flat();
+    assert.ok(allGoodbyeMessages.some(msg => notifyMessage.includes(msg)), "Should use a message from GOODBYE_MESSAGES_BY_BUCKET");
   });
 });

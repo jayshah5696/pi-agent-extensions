@@ -5,13 +5,19 @@ import * as os from "node:os";
 import * as path from "node:path";
 import {
   ABSURD_NERD_LINES,
+  BOLLYWOOD_MESSAGES,
   BOSS_PHASE_MESSAGES,
+  CONTEXT_MESSAGES,
   FAKE_COMPILER_PANIC,
   GOODBYE_MESSAGES_BY_BUCKET,
+  PI_TIPS,
   TERMINAL_MEME_LINES,
+  WHIMSICAL_VERBS,
 } from "./messages.js";
 
-type ChaosBucket = "A" | "B" | "C" | "D";
+type ChaosBucket = "A" | "B" | "C" | "D" | "E" | "F" | "G";
+
+const ALL_BUCKETS: ChaosBucket[] = ["A", "B", "C", "D", "E", "F", "G"];
 
 const SPINNER_PRESETS = {
   sleekOrbit: ["◜", "◠", "◝", "◞", "◡", "◟"],
@@ -61,9 +67,14 @@ const BUCKET_META: Array<{ key: ChaosBucket; title: string; description: string 
   { key: "B", title: "Boss Progression", description: "Phase-based messages by wait duration" },
   { key: "C", title: "Fake Compiler Panic", description: "Chaotic fake diagnostics" },
   { key: "D", title: "Terminal Meme Lines", description: "CLI one-liners and git jokes" },
+  { key: "E", title: "Bollywood & Hinglish", description: "Dialogues, movie vibes, desi dev humor" },
+  { key: "F", title: "Whimsical Verbs", description: "Combobulating... Skedaddling... Noodling..." },
+  { key: "G", title: "Pi Tips", description: "Helpful tips for using Pi effectively" },
 ];
 
-const DEFAULT_WEIGHTS: Record<ChaosBucket, number> = { A: 25, B: 25, C: 25, D: 25 };
+const DEFAULT_WEIGHTS: Record<ChaosBucket, number> = {
+  A: 10, B: 10, C: 10, D: 10, E: 30, F: 15, G: 15,
+};
 const DEFAULT_SPINNER_PRESET: SpinnerPresetId = "sleekOrbit";
 
 const state: WhimsyState = {
@@ -112,11 +123,18 @@ function patchGlobalLoaderSpinner(): void {
 }
 
 function formatWeights(weights: Record<ChaosBucket, number>): string {
-  return `A=${weights.A}% B=${weights.B}% C=${weights.C}% D=${weights.D}%`;
+  return ALL_BUCKETS.map((k) => `${k}=${weights[k]}%`).join(" ");
 }
 
 function formatStatus(): string {
-  return `Whimsy ${state.enabled ? "on" : "off"} • ${formatWeights(state.chaosWeights)} • spinner=${SPINNER_PRESET_LABELS[state.spinnerPreset]}`;
+  return `Whimsy ${state.enabled ? "on" : "off"} | ${formatWeights(state.chaosWeights)} | spinner=${SPINNER_PRESET_LABELS[state.spinnerPreset]}`;
+}
+
+function getTimeContext(): "morning" | "night" | "day" {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 11) return "morning";
+  if (hour >= 0 && hour < 4) return "night";
+  return "day";
 }
 
 function pickBossProgression(durationSeconds: number): string {
@@ -127,18 +145,39 @@ function pickBossProgression(durationSeconds: number): string {
 
 function chooseWeightedBucket(weights: Record<ChaosBucket, number>): ChaosBucket {
   const roll = Math.random() * 100;
-  if (roll < weights.A) return "A";
-  if (roll < weights.A + weights.B) return "B";
-  if (roll < weights.A + weights.B + weights.C) return "C";
-  return "D";
+  let cumulative = 0;
+  for (const bucket of ALL_BUCKETS) {
+    cumulative += weights[bucket];
+    if (roll < cumulative) return bucket;
+  }
+  return "E"; // fallback
+}
+
+function pickMessageForBucket(bucket: ChaosBucket, durationSeconds: number): string {
+  switch (bucket) {
+    case "A": return pick(ABSURD_NERD_LINES);
+    case "B": return pickBossProgression(durationSeconds);
+    case "C": return pick(FAKE_COMPILER_PANIC);
+    case "D": return pick(TERMINAL_MEME_LINES);
+    case "E": return pick(BOLLYWOOD_MESSAGES);
+    case "F": return pick(WHIMSICAL_VERBS);
+    case "G": return pick(PI_TIPS);
+  }
 }
 
 function pickWorkingMessageFor(weights: Record<ChaosBucket, number>, durationSeconds: number): string {
+  // Context-aware overrides: time of day and long waits
+  if (durationSeconds > 5 && Math.random() > 0.5) {
+    return pick(CONTEXT_MESSAGES.longWait);
+  }
+
+  const timeContext = getTimeContext();
+  if (timeContext !== "day" && Math.random() > 0.7) {
+    return pick(CONTEXT_MESSAGES[timeContext]);
+  }
+
   const selected = chooseWeightedBucket(weights);
-  if (selected === "A") return pick(ABSURD_NERD_LINES);
-  if (selected === "B") return pickBossProgression(durationSeconds);
-  if (selected === "C") return pick(FAKE_COMPILER_PANIC);
-  return pick(TERMINAL_MEME_LINES);
+  return pickMessageForBucket(selected, durationSeconds);
 }
 
 function pickGoodbyeMessage(): string {
@@ -160,16 +199,15 @@ function adjustWeightsByStep(
 function sanitizeWeights(raw?: Partial<Record<ChaosBucket, number>>): Record<ChaosBucket, number> {
   if (!raw) return { ...DEFAULT_WEIGHTS };
 
-  const keys: ChaosBucket[] = ["A", "B", "C", "D"];
-  const out: Record<ChaosBucket, number> = { A: 0, B: 0, C: 0, D: 0 };
+  const out: Record<ChaosBucket, number> = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, G: 0 };
 
-  for (const key of keys) {
+  for (const key of ALL_BUCKETS) {
     const v = Number(raw[key] ?? 0);
     if (!Number.isFinite(v) || v < 0 || v % 5 !== 0) return { ...DEFAULT_WEIGHTS };
     out[key] = v;
   }
 
-  const total = out.A + out.B + out.C + out.D;
+  const total = ALL_BUCKETS.reduce((sum, k) => sum + out[k], 0);
   if (total !== 100) return { ...DEFAULT_WEIGHTS };
   return out;
 }
@@ -253,7 +291,7 @@ async function openWeightsTuner(ctx: ExtensionCommandContext) {
   return ctx.ui.custom<TunerResult | null>((tui, theme, _kb, done) => {
     const workingWeights = { ...state.chaosWeights };
     let workingSpinnerPreset: SpinnerPresetId = state.spinnerPreset;
-    let selectedRow = 0; // 0-3 buckets, 4 spinner row
+    let selectedRow = 0; // 0-6 buckets, 7 spinner row
     let warning = "";
 
     const previewStartedAt = Date.now();
@@ -278,7 +316,7 @@ async function openWeightsTuner(ctx: ExtensionCommandContext) {
     };
 
     function totalWeight(): number {
-      return workingWeights.A + workingWeights.B + workingWeights.C + workingWeights.D;
+      return ALL_BUCKETS.reduce((sum, k) => sum + workingWeights[k], 0);
     }
 
     function currentPreviewFrame(): string {
@@ -304,7 +342,7 @@ async function openWeightsTuner(ctx: ExtensionCommandContext) {
         const prefix = focused ? theme.fg("accent", "> ") : "  ";
         const title = `${bucket.key}. ${bucket.title}`;
         const pct = `${workingWeights[bucket.key]}%`;
-        const main = focused ? theme.fg("accent", `${title.padEnd(28)} ${pct}`) : `${title.padEnd(28)} ${pct}`;
+        const main = focused ? theme.fg("accent", `${title.padEnd(30)} ${pct}`) : `${title.padEnd(30)} ${pct}`;
         add(prefix + main);
         add(`   ${theme.fg("dim", bucket.description)}`);
       }
