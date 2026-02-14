@@ -5,13 +5,11 @@ import path from "node:path";
 import os from "node:os";
 import nvidiaNimExtension, {
   parseModelLines,
-  loadConfig,
-  loadConfigSync,
-  saveConfig,
+  loadModelsConfig,
+  loadModelsConfigSync,
+  saveModelsConfig,
   getConfigPath,
-  getAgentSettingsPath,
-  updateEnabledModels,
-  type NvidiaNimConfig,
+  type NvidiaModelsConfig,
   type NvidiaModelEntry,
 } from "../extensions/nvidia-nim/index.ts";
 
@@ -96,31 +94,29 @@ deepseek-ai/deepseek-r1
   });
 });
 
-// --- Config persistence tests ---
+// --- Models config persistence tests ---
 
-describe("config persistence", () => {
+describe("models config persistence", () => {
   let tempHome: string;
   let originalHome: string | undefined;
 
-  test("saveConfig + loadConfig round-trip", async () => {
+  test("saveModelsConfig + loadModelsConfig round-trip", async () => {
     tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "pi-nim-test-"));
     originalHome = process.env.HOME;
     process.env.HOME = tempHome;
 
     try {
-      const config: NvidiaNimConfig = {
-        apiKey: "nvapi-test-key-123",
+      const config: NvidiaModelsConfig = {
         models: [
           { id: "meta/llama-3.1-405b-instruct", name: "Llama 3.1 405B Instruct", reasoning: false },
           { id: "deepseek-ai/deepseek-r1", name: "Deepseek R1", reasoning: true },
         ],
       };
 
-      await saveConfig(config);
-      const loaded = await loadConfig();
+      await saveModelsConfig(config);
+      const loaded = await loadModelsConfig();
 
       assert.ok(loaded);
-      assert.equal(loaded.apiKey, "nvapi-test-key-123");
       assert.equal(loaded.models.length, 2);
       assert.equal(loaded.models[0].id, "meta/llama-3.1-405b-instruct");
       assert.equal(loaded.models[1].reasoning, true);
@@ -130,13 +126,13 @@ describe("config persistence", () => {
     }
   });
 
-  test("loadConfig returns null when no file exists", async () => {
+  test("loadModelsConfig returns null when no file exists", async () => {
     tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "pi-nim-test-"));
     originalHome = process.env.HOME;
     process.env.HOME = tempHome;
 
     try {
-      const loaded = await loadConfig();
+      const loaded = await loadModelsConfig();
       assert.equal(loaded, null);
     } finally {
       process.env.HOME = originalHome;
@@ -144,21 +140,19 @@ describe("config persistence", () => {
     }
   });
 
-  test("loadConfigSync returns saved config", async () => {
+  test("loadModelsConfigSync returns saved config", async () => {
     tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "pi-nim-test-"));
     originalHome = process.env.HOME;
     process.env.HOME = tempHome;
 
     try {
-      const config: NvidiaNimConfig = {
-        apiKey: "nvapi-sync-test",
+      const config: NvidiaModelsConfig = {
         models: [{ id: "test/model", name: "Test", reasoning: false }],
       };
-      await saveConfig(config);
+      await saveModelsConfig(config);
 
-      const loaded = loadConfigSync();
+      const loaded = loadModelsConfigSync();
       assert.ok(loaded);
-      assert.equal(loaded.apiKey, "nvapi-sync-test");
       assert.equal(loaded.models.length, 1);
     } finally {
       process.env.HOME = originalHome;
@@ -166,18 +160,18 @@ describe("config persistence", () => {
     }
   });
 
-  test("loadConfigSync returns null when no file exists", () => {
+  test("loadModelsConfigSync returns null when no file exists", () => {
     const originalHome = process.env.HOME;
     process.env.HOME = "/tmp/nonexistent-pi-test-dir";
     try {
-      const loaded = loadConfigSync();
+      const loaded = loadModelsConfigSync();
       assert.equal(loaded, null);
     } finally {
       process.env.HOME = originalHome;
     }
   });
 
-  test("loadConfig returns null for invalid JSON", async () => {
+  test("loadModelsConfig returns null for invalid JSON", async () => {
     tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "pi-nim-test-"));
     originalHome = process.env.HOME;
     process.env.HOME = tempHome;
@@ -187,8 +181,38 @@ describe("config persistence", () => {
       await fs.mkdir(path.dirname(configPath), { recursive: true });
       await fs.writeFile(configPath, "{ invalid json", "utf-8");
 
-      const loaded = await loadConfig();
+      const loaded = await loadModelsConfig();
       assert.equal(loaded, null);
+    } finally {
+      process.env.HOME = originalHome;
+      await fs.rm(tempHome, { recursive: true, force: true });
+    }
+  });
+
+  test("loadModelsConfig handles legacy format with apiKey", async () => {
+    tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "pi-nim-test-"));
+    originalHome = process.env.HOME;
+    process.env.HOME = tempHome;
+
+    try {
+      // Write legacy format (with apiKey field)
+      const configPath = path.join(tempHome, ".pi", "nvidia-nim.json");
+      await fs.mkdir(path.dirname(configPath), { recursive: true });
+      await fs.writeFile(
+        configPath,
+        JSON.stringify({
+          apiKey: "nvapi-old-key",
+          models: [{ id: "meta/llama-3.1-405b-instruct", name: "Llama", reasoning: false }],
+        }),
+        "utf-8",
+      );
+
+      const loaded = await loadModelsConfig();
+      assert.ok(loaded, "should load legacy config");
+      assert.equal(loaded.models.length, 1);
+      assert.equal(loaded.models[0].id, "meta/llama-3.1-405b-instruct");
+      // apiKey should NOT be in the returned config
+      assert.equal((loaded as any).apiKey, undefined);
     } finally {
       process.env.HOME = originalHome;
       await fs.rm(tempHome, { recursive: true, force: true });
@@ -196,123 +220,12 @@ describe("config persistence", () => {
   });
 });
 
-// --- updateEnabledModels tests ---
+// --- Provider registration + OAuth ---
 
-describe("updateEnabledModels", () => {
-  let tempHome: string;
-  let originalHome: string | undefined;
-
-  async function setup() {
-    tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "pi-nim-test-"));
-    originalHome = process.env.HOME;
-    process.env.HOME = tempHome;
-  }
-
-  async function cleanup() {
-    process.env.HOME = originalHome;
-    await fs.rm(tempHome, { recursive: true, force: true });
-  }
-
-  test("adds nvidia models to empty enabledModels", async () => {
-    await setup();
-    try {
-      // Create settings without enabledModels
-      const settingsPath = getAgentSettingsPath();
-      await fs.mkdir(path.dirname(settingsPath), { recursive: true });
-      await fs.writeFile(settingsPath, JSON.stringify({ defaultModel: "claude" }), "utf-8");
-
-      const models: NvidiaModelEntry[] = [
-        { id: "meta/llama-3.1-405b-instruct", name: "Llama", reasoning: false },
-      ];
-      await updateEnabledModels(models);
-
-      const content = JSON.parse(await fs.readFile(settingsPath, "utf-8"));
-      assert.deepEqual(content.enabledModels, ["nvidia/meta/llama-3.1-405b-instruct"]);
-      assert.equal(content.defaultModel, "claude", "should preserve other settings");
-    } finally {
-      await cleanup();
-    }
-  });
-
-  test("appends nvidia models to existing enabledModels", async () => {
-    await setup();
-    try {
-      const settingsPath = getAgentSettingsPath();
-      await fs.mkdir(path.dirname(settingsPath), { recursive: true });
-      await fs.writeFile(settingsPath, JSON.stringify({
-        enabledModels: ["anthropic/claude-sonnet-4-5", "openai/gpt-4o"],
-      }), "utf-8");
-
-      const models: NvidiaModelEntry[] = [
-        { id: "meta/llama-3.1-405b-instruct", name: "Llama", reasoning: false },
-      ];
-      await updateEnabledModels(models);
-
-      const content = JSON.parse(await fs.readFile(settingsPath, "utf-8"));
-      assert.deepEqual(content.enabledModels, [
-        "anthropic/claude-sonnet-4-5",
-        "openai/gpt-4o",
-        "nvidia/meta/llama-3.1-405b-instruct",
-      ]);
-    } finally {
-      await cleanup();
-    }
-  });
-
-  test("replaces old nvidia models with new ones", async () => {
-    await setup();
-    try {
-      const settingsPath = getAgentSettingsPath();
-      await fs.mkdir(path.dirname(settingsPath), { recursive: true });
-      await fs.writeFile(settingsPath, JSON.stringify({
-        enabledModels: [
-          "anthropic/claude-sonnet-4-5",
-          "nvidia/old-model/removed",
-          "nvidia/another-old/model",
-          "openai/gpt-4o",
-        ],
-      }), "utf-8");
-
-      const models: NvidiaModelEntry[] = [
-        { id: "meta/llama-3.1-405b-instruct", name: "Llama", reasoning: false },
-        { id: "deepseek-ai/deepseek-r1", name: "DeepSeek", reasoning: true },
-      ];
-      await updateEnabledModels(models);
-
-      const content = JSON.parse(await fs.readFile(settingsPath, "utf-8"));
-      assert.deepEqual(content.enabledModels, [
-        "anthropic/claude-sonnet-4-5",
-        "openai/gpt-4o",
-        "nvidia/meta/llama-3.1-405b-instruct",
-        "nvidia/deepseek-ai/deepseek-r1",
-      ]);
-    } finally {
-      await cleanup();
-    }
-  });
-
-  test("creates settings file if it doesn't exist", async () => {
-    await setup();
-    try {
-      const models: NvidiaModelEntry[] = [
-        { id: "meta/llama-3.1-405b-instruct", name: "Llama", reasoning: false },
-      ];
-      await updateEnabledModels(models);
-
-      const content = JSON.parse(await fs.readFile(getAgentSettingsPath(), "utf-8"));
-      assert.deepEqual(content.enabledModels, ["nvidia/meta/llama-3.1-405b-instruct"]);
-    } finally {
-      await cleanup();
-    }
-  });
-});
-
-// --- Command registration + handler integration ---
-
-describe("nvidia-nim extension commands", () => {
-  test("registers nvidia-nim-auth, nvidia-auth, and nvidia-nim-models commands", () => {
-    const registeredCommands = new Map<string, any>();
+describe("nvidia-nim provider registration", () => {
+  test("registers provider with OAuth and models on init", () => {
     const registeredProviders = new Map<string, any>();
+    const registeredCommands = new Map<string, any>();
 
     const mockPi: any = {
       registerCommand: (name: string, opts: any) => registeredCommands.set(name, opts),
@@ -321,78 +234,148 @@ describe("nvidia-nim extension commands", () => {
 
     nvidiaNimExtension(mockPi);
 
-    assert.ok(registeredCommands.has("nvidia-nim-auth"), "should register nvidia-nim-auth");
-    assert.ok(registeredCommands.has("nvidia-auth"), "should register nvidia-auth alias");
-    assert.ok(registeredCommands.has("nvidia-nim-models"), "should register nvidia-nim-models");
+    // Provider should always be registered (for /login nvidia)
+    assert.ok(registeredProviders.has("nvidia"), "should register nvidia provider");
+
+    const config = registeredProviders.get("nvidia");
+    assert.equal(config.baseUrl, "https://integrate.api.nvidia.com/v1");
+    assert.equal(config.api, "openai-completions");
+    assert.ok(config.oauth, "should include OAuth config");
+    assert.equal(config.oauth.name, "Nvidia NIM");
+    assert.equal(typeof config.oauth.login, "function");
+    assert.equal(typeof config.oauth.refreshToken, "function");
+    assert.equal(typeof config.oauth.getApiKey, "function");
   });
 
-  test("auth handler saves config and calls registerProvider", async () => {
+  test("registers nvidia-nim-models command (no auth commands)", () => {
+    const registeredCommands = new Map<string, any>();
+
+    const mockPi: any = {
+      registerCommand: (name: string, opts: any) => registeredCommands.set(name, opts),
+      registerProvider: () => {},
+    };
+
+    nvidiaNimExtension(mockPi);
+
+    assert.ok(registeredCommands.has("nvidia-nim-models"), "should register nvidia-nim-models");
+    assert.ok(!registeredCommands.has("nvidia-nim-auth"), "should NOT register nvidia-nim-auth");
+    assert.ok(!registeredCommands.has("nvidia-auth"), "should NOT register nvidia-auth alias");
+  });
+
+  test("OAuth getApiKey returns access token", () => {
+    let oauthConfig: any = null;
+
+    const mockPi: any = {
+      registerCommand: () => {},
+      registerProvider: (_name: string, config: any) => { oauthConfig = config.oauth; },
+    };
+
+    nvidiaNimExtension(mockPi);
+
+    const credentials = { access: "nvapi-test-key", refresh: "nvapi-test-key", expires: Date.now() + 1000 };
+    assert.equal(oauthConfig.getApiKey(credentials), "nvapi-test-key");
+  });
+
+  test("OAuth refreshToken extends expiry without changing key", async () => {
+    let oauthConfig: any = null;
+
+    const mockPi: any = {
+      registerCommand: () => {},
+      registerProvider: (_name: string, config: any) => { oauthConfig = config.oauth; },
+    };
+
+    nvidiaNimExtension(mockPi);
+
+    const now = Date.now();
+    const credentials = { access: "nvapi-test-key", refresh: "nvapi-test-key", expires: now };
+    const refreshed = await oauthConfig.refreshToken(credentials);
+
+    assert.equal(refreshed.access, "nvapi-test-key");
+    assert.equal(refreshed.refresh, "nvapi-test-key");
+    assert.ok(refreshed.expires > now, "expiry should be extended");
+  });
+
+  test("OAuth login rejects empty API key", async () => {
+    let oauthConfig: any = null;
+
+    const mockPi: any = {
+      registerCommand: () => {},
+      registerProvider: (_name: string, config: any) => { oauthConfig = config.oauth; },
+    };
+
+    nvidiaNimExtension(mockPi);
+
+    const mockCallbacks: any = {
+      onPrompt: async () => "",
+      onAuth: () => {},
+    };
+
+    await assert.rejects(
+      () => oauthConfig.login(mockCallbacks),
+      (err: Error) => err.message.includes("API key is required"),
+    );
+  });
+});
+
+// --- /nvidia-nim-models command ---
+
+describe("nvidia-nim-models command", () => {
+  test("models handler saves config and re-registers provider", async () => {
     const tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "pi-nim-test-"));
     const originalHome = process.env.HOME;
     process.env.HOME = tempHome;
 
     try {
       const registeredCommands = new Map<string, any>();
-      let providerConfig: any = null;
+      const providerCalls: any[] = [];
 
       const mockPi: any = {
         registerCommand: (name: string, opts: any) => registeredCommands.set(name, opts),
-        registerProvider: (name: string, config: any) => { providerConfig = { name, config }; },
+        registerProvider: (name: string, config: any) => providerCalls.push({ name, config }),
       };
 
       nvidiaNimExtension(mockPi);
 
-      const handler = registeredCommands.get("nvidia-nim-auth").handler;
+      const handler = registeredCommands.get("nvidia-nim-models").handler;
 
-      let inputCallCount = 0;
       const mockCtx: any = {
         hasUI: true,
         ui: {
-          input: async (title: string, placeholder: string) => {
-            inputCallCount++;
-            // First call is API key
-            return "nvapi-test-key-456";
-          },
-          editor: async (title: string, prefill: string) => {
-            // Return model lines
-            return "meta/llama-3.1-405b-instruct\ndeepseek-ai/deepseek-r1\n";
-          },
-          notify: (message: string, type: string) => {},
-          confirm: async () => true,
+          editor: async () => "meta/llama-3.1-405b-instruct\ndeepseek-ai/deepseek-r1\n",
+          notify: () => {},
         },
       };
 
       await handler(undefined, mockCtx);
 
-      // Verify config was saved
+      // Verify models config was saved (without apiKey)
       const configPath = path.join(tempHome, ".pi", "nvidia-nim.json");
       const content = await fs.readFile(configPath, "utf-8");
       const saved = JSON.parse(content);
-      assert.equal(saved.apiKey, "nvapi-test-key-456");
+      assert.equal((saved as any).apiKey, undefined, "should not save apiKey in config");
       assert.equal(saved.models.length, 2);
 
-      // Verify registerProvider was called
-      assert.ok(providerConfig, "registerProvider should have been called");
-      assert.equal(providerConfig.name, "nvidia");
-      assert.equal(providerConfig.config.baseUrl, "https://integrate.api.nvidia.com/v1");
-      assert.equal(providerConfig.config.api, "openai-completions");
-      assert.equal(providerConfig.config.models.length, 2);
-      assert.equal(providerConfig.config.models[0].id, "meta/llama-3.1-405b-instruct");
-      assert.equal(providerConfig.config.models[1].id, "deepseek-ai/deepseek-r1");
-      assert.equal(providerConfig.config.models[1].reasoning, true);
+      // Verify provider was re-registered (last call is from the handler)
+      const lastCall = providerCalls[providerCalls.length - 1];
+      assert.equal(lastCall.name, "nvidia");
+      assert.equal(lastCall.config.models.length, 2);
+      assert.equal(lastCall.config.models[0].id, "meta/llama-3.1-405b-instruct");
+      assert.equal(lastCall.config.models[1].id, "deepseek-ai/deepseek-r1");
+      assert.ok(lastCall.config.oauth, "should preserve OAuth config on re-register");
     } finally {
       process.env.HOME = originalHome;
       await fs.rm(tempHome, { recursive: true, force: true });
     }
   });
 
-  test("models handler requires existing config", async () => {
+  test("models handler uses default model when no existing config", async () => {
     const tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "pi-nim-test-"));
     const originalHome = process.env.HOME;
     process.env.HOME = tempHome;
 
     try {
       const registeredCommands = new Map<string, any>();
+      let editorPrefill = "";
 
       const mockPi: any = {
         registerCommand: (name: string, opts: any) => registeredCommands.set(name, opts),
@@ -402,68 +385,73 @@ describe("nvidia-nim extension commands", () => {
       nvidiaNimExtension(mockPi);
 
       const handler = registeredCommands.get("nvidia-nim-models").handler;
-      let notifyType = "";
-      let notifyMsg = "";
 
       const mockCtx: any = {
         hasUI: true,
         ui: {
-          notify: (message: string, type: string) => { notifyMsg = message; notifyType = type; },
+          editor: async (_title: string, prefill: string) => {
+            editorPrefill = prefill;
+            return "meta/llama-3.1-405b-instruct\n";
+          },
+          notify: () => {},
         },
       };
 
       await handler(undefined, mockCtx);
 
-      assert.equal(notifyType, "error");
-      assert.ok(notifyMsg.includes("/nvidia-nim-auth"), "should tell user to run auth first");
+      assert.ok(
+        editorPrefill.includes("meta/llama-3.1-405b-instruct"),
+        "should prefill with default model when no existing config",
+      );
     } finally {
       process.env.HOME = originalHome;
       await fs.rm(tempHome, { recursive: true, force: true });
     }
   });
 
-  test("auth handler keeps existing key on empty input", async () => {
-    const tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "pi-nim-test-"));
-    const originalHome = process.env.HOME;
-    process.env.HOME = tempHome;
+  test("models handler does nothing when editor is cancelled", async () => {
+    const registeredCommands = new Map<string, any>();
+    let notifyMsg = "";
 
-    try {
-      // Pre-save a config
-      const configDir = path.join(tempHome, ".pi");
-      await fs.mkdir(configDir, { recursive: true });
-      await fs.writeFile(
-        path.join(configDir, "nvidia-nim.json"),
-        JSON.stringify({ apiKey: "nvapi-existing-key", models: [{ id: "old/model", name: "Old Model", reasoning: false }] }),
-      );
+    const mockPi: any = {
+      registerCommand: (name: string, opts: any) => registeredCommands.set(name, opts),
+      registerProvider: () => {},
+    };
 
-      const registeredCommands = new Map<string, any>();
-      let savedApiKey = "";
+    nvidiaNimExtension(mockPi);
 
-      const mockPi: any = {
-        registerCommand: (name: string, opts: any) => registeredCommands.set(name, opts),
-        registerProvider: (name: string, config: any) => { savedApiKey = config.apiKey; },
-      };
+    const handler = registeredCommands.get("nvidia-nim-models").handler;
 
-      nvidiaNimExtension(mockPi);
+    const mockCtx: any = {
+      hasUI: true,
+      ui: {
+        editor: async () => "",
+        notify: (msg: string) => { notifyMsg = msg; },
+      },
+    };
 
-      const handler = registeredCommands.get("nvidia-nim-auth").handler;
+    await handler(undefined, mockCtx);
 
-      const mockCtx: any = {
-        hasUI: true,
-        ui: {
-          input: async () => "",  // empty input → keep existing
-          editor: async () => "new/model\n",
-          notify: () => {},
-          confirm: async () => true,
-        },
-      };
+    assert.ok(notifyMsg.includes("Cancelled"), "should notify cancellation");
+  });
 
-      await handler(undefined, mockCtx);
+  test("models handler requires interactive mode", async () => {
+    const registeredCommands = new Map<string, any>();
 
-      assert.equal(savedApiKey, "nvapi-existing-key", "should keep existing API key");
-    } finally {
-      process.env.HOME = originalHome;
-      await fs.rm(tempHome, { recursive: true, force: true });
-    }
+    const mockPi: any = {
+      registerCommand: (name: string, opts: any) => registeredCommands.set(name, opts),
+      registerProvider: () => {},
+    };
+
+    nvidiaNimExtension(mockPi);
+
+    const handler = registeredCommands.get("nvidia-nim-models").handler;
+
+    const mockCtx: any = {
+      hasUI: false,
+    };
+
+    // Should return without error (prints to console)
+    await handler(undefined, mockCtx);
   });
 });
