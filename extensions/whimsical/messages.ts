@@ -1,5 +1,100 @@
-export type MessageCategory = 'bollywood' | 'smart' | 'tip' | 'gerund';
+// ── Bucket A: Absurd Nerd Lines ──────────────────────────────────────────────
+export const ABSURD_NERD_LINES = [
+  "Grepping the void for meaning...",
+  "Refactoring by vibes and caffeine...",
+  "Rotating the bug 90° to see if it's a feature...",
+  "Converting coffee into TypeScript...",
+  "Asking the rubber duck for architectural guidance...",
+  "Recompiling my self-esteem...",
+  "Summoning stack traces from the 8th dimension...",
+  "Debugging in prod (emotionally)...",
+  "Aligning semicolons with lunar gravity...",
+  "Optimizing for memes per second...",
+  "Upgrading brain RAM to 128MB...",
+  "Consulting the ancient scrolls of Stack Overflow...",
+  "Introducing one more abstraction layer (for science)...",
+  "Measuring latency in dog years...",
+  "Teaching recursion to fear itself...",
+  "Replacing logic with pure confidence...",
+  "Pinning blame on cosmic rays...",
+  "Calibrating keyboard clack acoustics...",
+  "Benchmarking vibes against reality...",
+  "Turning it off and on with conviction...",
+];
 
+// ── Bucket B: Boss Progression (phase-based by wait time) ────────────────────
+export const BOSS_PHASE_MESSAGES = {
+  early: [
+    "🗡️ Boss Fight: Phase 1 — Pulling aggro...",
+    "🎮 Encounter started. Dodging obvious bugs...",
+    "⚔️ Warmup round: sharpening unit tests...",
+    "🧪 Pre-buffing with logs and false confidence...",
+  ],
+  mid: [
+    "🔥 Boss Fight: Phase 2 — Enrage mechanics unlocked...",
+    "🛡️ Raid callout: spread for stack traces!",
+    "💥 The bug used Critical Confusion. It's super effective.",
+    "🎯 Parsing attack patterns and questionable commits...",
+  ],
+  late: [
+    "☠️ Final Phase — clutch mode activated...",
+    "🚨 Enrage timer active. Casting npm install...",
+    "🧠 Last stand: sacrificing sleep for victory...",
+    "🏁 1% HP left on the boss (probably)...",
+  ],
+};
+
+// ── Bucket C: Fake Compiler Panic ────────────────────────────────────────────
+export const FAKE_COMPILER_PANIC = [
+  "warning TS9999: vibes are not strongly typed",
+  "fatal: could not resolve existential dread",
+  "error: semicolon not found, hope not found",
+  "panic: undefined is not a function (of society)",
+  "warning: variable 'motivation' is declared but never used",
+  "error E420: insufficient snacks for build",
+  "linker error: could not link dreams.dll",
+  "runtime warning: coffee level below minimum threshold",
+  "type error: expected genius, received goblin",
+  "internal compiler error: lol",
+  "segfault (core dumped emotionally)",
+  "note: fixed by adding one parenthesis and prayer",
+];
+
+// ── Bucket D: Terminal Meme Lines ────────────────────────────────────────────
+export const TERMINAL_MEME_LINES = [
+  "sudo rm -rf stress && echo 'inner peace installed'",
+  "git commit -m 'fixed bug (created 4 new ones for lore)'",
+  "npm install luck --save-dev",
+  "echo 'it works' | tee production.log",
+  "./deploy.sh && run",
+  "grep -R 'WHY' .",
+  "git push --force-with-confidence",
+  "docker compose up --build --snacks",
+  "kubectl vibes --namespace=prod",
+  "chmod +x brain.sh && ./brain.sh",
+  "cat README.md | cry",
+  "top: CPU 100%, me 2%",
+  "git stash && run && panic",
+  "alias fix='turn it off && turn it on'",
+  "ping google.com for emotional support",
+  "find . -name '*bug*' -delete # legally questionable",
+  "echo 'ship it' && immediately regret it",
+  "git rebase -i destiny",
+  "curl localhost:3000 && pray",
+  "history | tail -n 5 # evidence",
+  "sudo apt install confidence",
+  "yarn add vibes",
+  "pnpm add chaos",
+  "echo 'LGTM' before reading diff",
+  "git blame . # me",
+  "kill -9 procrastination",
+  "mkdir final-final-real-v2",
+  "mv final-final-real-v2 final-final-real-v3",
+  "echo 'quick fix' > tech_debt.txt",
+  "python -c \"print('it was DNS')\"",
+];
+
+// ── Bucket E: Bollywood & Hinglish ───────────────────────────────────────────
 export const BOLLYWOOD_MESSAGES = [
   // --- CLASSIC DIALOGUES (Reimagined for Code) ---
   "Tareekh pe tareekh, tareekh pe tareekh... par result nahi mila my lord!",
@@ -1297,6 +1392,7 @@ export const BOLLYWOOD_MESSAGES = [
   "Sed...",
 ];
 
+// ── Bucket F: Pi Tips ────────────────────────────────────────────────────────
 export const PI_TIPS = [
   "💡 Tip: Use /help to see all available commands",
   "💡 Tip: Use /sessions or /resume to switch between sessions",
@@ -1348,6 +1444,7 @@ export const PI_TIPS = [
   "💡 Tip: Use /name to rename the current session",
 ];
 
+// ── Context-aware messages (time of day + long wait) ─────────────────────────
 export const CONTEXT_MESSAGES = {
   // Morning (5 AM - 11 AM)
   morning: [
@@ -1396,6 +1493,7 @@ export const CONTEXT_MESSAGES = {
   ]
 };
 
+// ── Bucket G: Whimsical Verbs (Gerunds) ──────────────────────────────────────
 // "Gerunds" / Whimsical Verbs (The classic list, kept for variety)
 export const WHIMSICAL_VERBS = [
   "Schlepping...", "Combobulating...", "Vibing...", "Concocting...", "Spelunking...",
@@ -1438,29 +1536,65 @@ export const WHIMSICAL_VERBS = [
   "Shouldering...", "Bouldering...",
 ];
 
-export const GOODBYE_MESSAGES = [
-  "Jaa Simran jaa, jee le apni zindagi...",
-  "Khatam... tata... bye bye!",
-  "Gaya... sab gaya...",
-  "Abhi hum zinda hain! (Just kidding, bye!)",
-  "Picture abhi baaki hai mere dost... (See you next time!)",
-  "Dosti ka ek usool hai madam... no sorry, no thank you... (Bye!)",
-  "Senorita, bade bade deshon mein...",
-  "Thappad se darr nahi lagta sahab, goodbye se lagta hai...",
-  "Khamosh! (Exiting...)",
-  "Mogambo khush hua! (Session ended)",
-  "Hasta la vista, baby!",
-  "I'll be back.",
-  "Live long and prosper.",
-  "May the Force be with you.",
-  "So long, and thanks for all the fish.",
-  "Exiting matrix...",
-  "Disconnecting neural link...",
-  "Powering down systems...",
-  "Shutting down core...",
-  "Deactivating shields...",
-  "Terminating process...",
-  "Closing wormhole...",
-  "Returning to base reality...",
-  "End of line.",
-];
+// ── Goodbye messages by bucket ───────────────────────────────────────────────
+export const GOODBYE_MESSAGES_BY_BUCKET = {
+  A: [
+    "🧠 Nerd goblin logged off. May your stack traces be short.",
+    "📚 Returning to the sacred docs cave. BRB.",
+    "🦆 Rubber duck has approved this exit.",
+    "⚙️ Refactor complete. Human needs snacks now.",
+    "🛰️ Leaving orbit. Keep the semicolons aligned.",
+  ],
+  B: [
+    "🏆 Boss defeated. Loot collected. Logging out.",
+    "⚔️ Raid complete. GG, no re.",
+    "🛡️ Final phase cleared. Retreating to base.",
+    "🎮 Match won. Queueing for sleep mode.",
+    "🔥 Enrage survived. Session extracted successfully.",
+  ],
+  C: [
+    "fatal: user exited with code 0",
+    "warning: goodbye may contain sarcasm",
+    "note: shutdown successful after adding one parenthesis",
+    "panic resolved: touched grass",
+    "compiler says: 'ship it and sleep'",
+  ],
+  D: [
+    "git commit -m 'bye for now' && git push",
+    "exit 0 # works on my machine",
+    "sudo shutdown -h now (emotionally)",
+    "tmux detach; coffee attach",
+    "echo 'brb' | tee /dev/terminal",
+  ],
+  E: [
+    "Jaa Simran jaa, jee le apni zindagi...",
+    "Khatam... tata... bye bye!",
+    "Gaya... sab gaya...",
+    "Abhi hum zinda hain! (Just kidding, bye!)",
+    "Picture abhi baaki hai mere dost... (See you next time!)",
+    "Dosti ka ek usool hai madam... no sorry, no thank you... (Bye!)",
+    "Senorita, bade bade deshon mein...",
+    "Thappad se darr nahi lagta sahab, goodbye se lagta hai...",
+    "Khamosh! (Exiting...)",
+    "Mogambo khush hua! (Session ended)",
+  ],
+  F: [
+    "Hasta la vista, baby!",
+    "I'll be back.",
+    "Live long and prosper.",
+    "May the Force be with you.",
+    "So long, and thanks for all the fish.",
+    "Exiting matrix...",
+    "Disconnecting neural link...",
+    "Powering down systems...",
+    "Shutting down core...",
+    "End of line.",
+  ],
+  G: [
+    "Vamoosing...",
+    "Absquatulating...",
+    "Skedaddling...",
+    "Defenestrating...",
+    "Absconding...",
+  ],
+} as const;

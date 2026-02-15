@@ -1,59 +1,80 @@
-# Whimsical Extension
+# Whimsical Extension (Chaos Mixer)
 
-A personality engine for the [pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent). Adds delightful, context-aware, and humorous loading messages to make waiting for the LLM less boring.
+A stupid, nerdy, fun, Bollywood-infused loading-message extension for Pi.
 
-## Features
+## What changed
 
-- **Context-Aware Loading Messages**: Messages change based on time of day (Morning/Night) and how long the task is taking.
-- **Multiple Personality Modes**: Choose your vibe, from Bollywood drama to Geek humor.
-- **Smart Exit**: Adds `/exit` and `/bye` commands that perform a graceful shutdown with a whimsical goodbye message (and ensure your terminal is left clean!).
-- **Helpful Tips**: Occasionally shows useful Pi usage tips while you wait.
+Older separate modes (`classic`, `bollywood`, `geek`) are replaced by one chaos mixer with 7 weighted buckets:
 
-## Usage
+- **A**: Absurd Nerd Lines — grepping the void, refactoring by vibes
+- **B**: Boss Progression — phase-based messages by wait duration
+- **C**: Fake Compiler Panic — chaotic fake diagnostics
+- **D**: Terminal Meme Lines — CLI one-liners and git jokes
+- **E**: Bollywood & Hinglish — classic dialogues, movie vibes, desi dev humor
+- **F**: Whimsical Verbs — Combobulating... Skedaddling... Noodling...
+- **G**: Pi Tips — helpful tips for using Pi effectively
 
-The extension activates automatically. You can configure it using the `/whimsy` command.
+Default split is `A=10 / B=10 / C=10 / D=10 / E=30 / F=15 / G=15` (Bollywood-heavy by default).
 
-### Commands
+Context-aware overrides still apply: morning messages (5-11 AM), late night messages (12-4 AM), and long-wait reassurance (>5s).
+
+## Commands
 
 | Command | Description |
-|---------|-------------|
-| `/whimsy` | Check current status and usage. |
-| `/whimsy <mode>` | Switch mode (chaos, bollywood, geek, classic). |
-| `/whimsy on` | Enable whimsical messages. |
-| `/whimsy off` | Disable (revert to standard "Thinking..." messages). |
-| `/exit` | Exit Pi gracefully with a random goodbye message. |
-| `/bye` | Alias for `/exit`. |
+|---|---|
+| `/whimsy` | Open interactive percentage tuner window |
+| `/whimsy on` | Enable whimsical messages |
+| `/whimsy off` | Disable whimsical messages |
+| `/whimsy status` | Show enabled state + current percentages + spinner preset |
+| `/whimsy reset` | Reset to default weights + default spinner preset |
+| `/exit` | Exit Pi with a weighted goodbye (uses current bucket percentages) |
+| `/bye` | Alias for `/exit` |
 
-### Modes
+## Interactive tuner behavior
 
-- **`chaos` (Default)**: A curated mix of everything!
-  - 50% Bollywood/Hinglish
-  - 30% Helpful Tips
-  - 20% Sci-Fi/Classic Gerunds
-- **`bollywood`**: 100% Bollywood dialogues and Hinglish developer memes.
-  - *"Picture abhi baaki hai mere dost..."*
-  - *"Tareekh pe tareekh..."*
-- **`geek`**: Sci-Fi, Cyberpunk, and Developer humor.
-  - *"Reticulating splines..."*
-  - *"Downloading more RAM..."*
-- **`classic`**: Simple, whimsical verbs (Claude-style).
-  - *"Schlepping..."*, *"Combobulating..."*
+When you run `/whimsy`, you get a window where:
 
-## Examples
+- a live spinner preview is shown using the current weights
+- preview spinner animates at real-turn cadence and preview message rotates every 10 seconds
 
-**Long Wait (Story Mode):**
-If a task takes longer than 5 seconds, the message changes to reassure you:
-> "Abhi hum zinda hain!" (We are still alive!)
-> "Sabar ka phal meetha hota hai..." (Patience pays off...)
+- `↑ / ↓` moves between A-G rows and the spinner row at the bottom
+- `← / →` adjusts the selected bucket by **5** (or switches spinner preset when spinner row is selected)
+- spinner row shows a small frame sample next to each preset name
+- `Enter` saves **only if total = 100**
+- `Esc` cancels
 
-**Late Night (12 AM - 4 AM):**
-> "Soja beta, varna Gabbar aa jayega..."
-> "Burning the midnight oil..."
+Totals are allowed to go below/above 100 while tuning, but save is blocked until total is exactly 100. A warning is shown at the bottom when invalid.
 
-## Installation
+Spinner presets included: Sleek Orbit, Neon Pulse, Scanline, Chevron Flow, Matrix Glyph.
 
-Included in `pi-agent-extensions`.
+Selected spinner preset is applied to Pi's live loader spinner (not just preview).
 
-```bash
-pi install npm:pi-agent-extensions
+Goodbye messages also use A-G bucketed pools and follow the same weighted split.
+
+## Persistence
+
+Settings persist globally in:
+
+- `~/.pi/agent/settings.json` under the `whimsical` key
+
+No local project settings are used for whimsy anymore.
+
+Example:
+
+```json
+{
+  "whimsical": {
+    "enabled": true,
+    "weights": {
+      "A": 10,
+      "B": 10,
+      "C": 10,
+      "D": 10,
+      "E": 30,
+      "F": 15,
+      "G": 15
+    },
+    "spinnerPreset": "sleekOrbit"
+  }
+}
 ```
