@@ -68,8 +68,8 @@ const BUCKET_META: Array<{ key: ChaosBucket; title: string; description: string 
   { key: "C", title: "Fake Compiler Panic", description: "Chaotic fake diagnostics" },
   { key: "D", title: "Terminal Meme Lines", description: "CLI one-liners and git jokes" },
   { key: "E", title: "Bollywood & Hinglish", description: "Dialogues, movie vibes, desi dev humor" },
-  { key: "F", title: "Whimsical Verbs", description: "Combobulating... Skedaddling... Noodling..." },
-  { key: "G", title: "Pi Tips", description: "Helpful tips for using Pi effectively" },
+  { key: "F", title: "Pi Tips", description: "Helpful tips for using Pi effectively" },
+  { key: "G", title: "Whimsical Verbs", description: "Combobulating... Skedaddling... Noodling..." },
 ];
 
 const DEFAULT_WEIGHTS: Record<ChaosBucket, number> = {
@@ -160,8 +160,8 @@ function pickMessageForBucket(bucket: ChaosBucket, durationSeconds: number): str
     case "C": return pick(FAKE_COMPILER_PANIC);
     case "D": return pick(TERMINAL_MEME_LINES);
     case "E": return pick(BOLLYWOOD_MESSAGES);
-    case "F": return pick(WHIMSICAL_VERBS);
-    case "G": return pick(PI_TIPS);
+    case "F": return pick(PI_TIPS);
+    case "G": return pick(WHIMSICAL_VERBS);
   }
 }
 
