@@ -1,5 +1,5 @@
 /**
- * /context
+ * /context-simple
  *
  * Small TUI view showing what's loaded/available:
  * - extensions (best-effort from registered extension slash commands)
@@ -470,8 +470,8 @@ export default function contextExtension(pi: ExtensionAPI) {
 		}
 	});
 
-	pi.registerCommand("context", {
-		description: "Show loaded context overview",
+	pi.registerCommand("context-simple", {
+		description: "Show loaded context overview", 
 		handler: async (_args, ctx: ExtensionCommandContext) => {
 			const commands = pi.getCommands();
 			const extensionCmds = commands.filter((c) => c.source === "extension");
