@@ -10,6 +10,7 @@ from pathlib import Path
 from supermemory import Supermemory
 
 API_KEY = os.getenv("SUPERMEMORY_API_KEY")
+MEMORY_FILE = Path("/home/node/.openclaw/workspace/MEMORY.md")
 
 def backup_memory():
     if not API_KEY:
