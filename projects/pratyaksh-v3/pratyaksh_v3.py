@@ -30,6 +30,36 @@ from evaluators import set_invariance, citation_fidelity, edge_case, translitera
 from evolution.evolve import run_evolution
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def extract_json_object(raw: str) -> dict:
+    """Extract JSON object from model response, handling nested braces properly."""
+    # Try direct json.loads first
+    try:
+        return json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    # Find outermost JSON object using brace depth tracking
+    start = raw.find('{')
+    if start >= 0:
+        depth = 0
+        for i, c in enumerate(raw[start:], start):
+            if c == '{':
+                depth += 1
+            elif c == '}':
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return json.loads(raw[start:i+1])
+                    except (json.JSONDecodeError, ValueError):
+                        pass
+                    break
+    return {}
+
+
+# ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
@@ -182,9 +212,8 @@ Respond with ONLY a JSON object: {{"score": 0.0|0.5|1.0, "reasoning": "..."}}"""
             max_tokens=256,
         )
         raw = completion.choices[0].message.content.strip()
-        match = re.search(r'\{[^}]+\}', raw)
-        if match:
-            result = json.loads(match.group())
+        result = extract_json_object(raw)
+        if result:
             return float(result.get("score", 0.0))
     except Exception as e:
         print(f"    ⚠ D1 judge error: {e}")
@@ -239,9 +268,8 @@ The score should be the fraction of hops covered (covered / total)."""
             max_tokens=512,
         )
         raw = completion.choices[0].message.content.strip()
-        match = re.search(r'\{[^}]*"score"[^}]*\}', raw, re.DOTALL)
-        if match:
-            result = json.loads(match.group())
+        result = extract_json_object(raw)
+        if result:
             return float(result.get("score", 0.0))
     except Exception as e:
         print(f"    ⚠ D4 judge error: {e}")
@@ -272,9 +300,8 @@ Respond with ONLY a JSON object: {{"score": 0.0|0.5|1.0, "reasoning": "..."}}"""
             max_tokens=256,
         )
         raw = completion.choices[0].message.content.strip()
-        match = re.search(r'\{[^}]+\}', raw)
-        if match:
-            result = json.loads(match.group())
+        result = extract_json_object(raw)
+        if result:
             return float(result.get("score", 0.0))
     except Exception as e:
         print(f"    ⚠ D6 judge error: {e}")
@@ -586,6 +613,8 @@ def run_uc08(model: dict) -> dict:
     samples = load_all_samples("UC-08")
     total_latency = 0.0
     d3_scores = []
+    title_match_scores = []
+    responses = []
 
     for sample in samples:
         prompt = f"""Extract the paper title and ArXiv ID from the following abstract.
@@ -599,16 +628,22 @@ Abstract:
 
         response, latency = call_model(model, prompt, max_tokens=128)
         total_latency += latency
+        responses.append(response)
 
         # D3: Citation Fidelity — does the extracted ArXiv ID resolve?
         result = citation_fidelity.evaluate_exact(response, sample["expected_arxiv_id"])
         d3_scores.append(result["score"])
 
+        # Title match: check if expected title appears in response (case-insensitive, partial match)
+        title_in_response = sample["expected_title"].lower() in response.lower()
+        title_match_scores.append(1.0 if title_in_response else 0.0)
+
     avg_d3 = float(np.mean(d3_scores)) if d3_scores else 0.0
+    avg_title_match = float(np.mean(title_match_scores)) if title_match_scores else 0.0
     avg_latency = total_latency / len(samples) if samples else 0
 
     return {
-        "score": avg_d3,  # For UC-08, quality IS citation fidelity
+        "score": avg_title_match * 0.5 + avg_d3 * 0.5,  # Blend title match + citation fidelity
         "latency": avg_latency,
         "n_samples": len(samples),
         "dimensions": {
@@ -666,9 +701,8 @@ Respond with ONLY a JSON object: {{"score": 0.0-1.0, "circular_deps": true/false
                 max_tokens=512,
             )
             raw = completion.choices[0].message.content.strip()
-            match = re.search(r'\{[^}]*"score"[^}]*\}', raw, re.DOTALL)
-            if match:
-                result = json.loads(match.group())
+            result = extract_json_object(raw)
+            if result:
                 quality_scores.append(float(result.get("score", 0.0)))
             else:
                 quality_scores.append(0.0)
@@ -732,10 +766,14 @@ def compute_composite_scores(results: dict) -> dict:
             # Get dimension scores for this UC
             dims = r.get("dimensions", {})
             dim_values = list(dims.values()) if dims else []
-            dim_avg = float(np.mean(dim_values)) if dim_values else 1.0  # Default to 1.0 if no dims
 
-            # v3 composite: (quality × 0.6 + dim_avg × 0.4) × speed_factor
-            blended = r["score"] * 0.6 + dim_avg * 0.4
+            # If no dimension scores, don't blend — use quality only
+            if dim_values:
+                dim_avg = float(np.mean(dim_values))
+                blended = r["score"] * 0.6 + dim_avg * 0.4
+            else:
+                dim_avg = r["score"]  # Mirror quality score for UCs without dims
+                blended = r["score"]  # No blending penalty/bonus
             composite = blended * speed_factor
 
             if model_name not in composites:

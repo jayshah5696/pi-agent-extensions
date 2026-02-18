@@ -91,6 +91,11 @@ def evaluate(confidences: list[float]) -> float:
     if len(confidences) < 2:
         return 1.0
     
+    # If all binary (0/1 with no intermediate values), measure label consistency instead
+    if all(c in (0.0, 1.0) for c in confidences):
+        # Invariance = 1.0 if all same label, 0.0 if labels differ
+        return 1.0 if len(set(confidences)) == 1 else 0.0
+    
     std = float(np.std(confidences))
     return max(0.0, 1.0 - std)
 
