@@ -49,11 +49,26 @@ def shuffle_signals(text: str, n_shuffles: int = 3, seed: int = 42) -> list[str]
     return variants
 
 
+def extract_label_index(response: str, all_labels: list[str]) -> int:
+    """Extract which label the model predicted, return its index.
+    
+    Used for set invariance: we compare label indices across shuffled runs.
+    If model is order-invariant, it should pick the same label index.
+    Returns -1 if no label found.
+    """
+    resp_lower = response.lower().strip()
+    for i, label in enumerate(all_labels):
+        if label.lower().replace("_", " ") in resp_lower or label.lower() in resp_lower:
+            return i
+    return -1
+
+
 def extract_confidence(response: str, expected_labels: list[str]) -> float:
     """Extract a confidence-like signal from model response.
     
-    Tries to find: explicit confidence score, or falls back to
-    checking if the model's chosen label matches expectation (binary 0/1).
+    Tries to find explicit confidence score first.
+    Falls back to label index (normalized 0-1) so different labels
+    produce different float values and std_dev reflects label variance.
     """
     resp_lower = response.lower().strip()
     
@@ -73,10 +88,12 @@ def extract_confidence(response: str, expected_labels: list[str]) -> float:
                 val /= 100.0  # Convert percentage
             return min(val, 1.0)
     
-    # Fallback: check which label appears and use 1.0 for match, 0.0 for miss
-    for label in expected_labels:
-        if label.lower().replace("_", " ") in resp_lower or label.lower() in resp_lower:
-            return 1.0
+    # Fallback: encode the predicted label as a normalized index (0.0, 0.5, 1.0, ...)
+    # so that DIFFERENT labels produce DIFFERENT float values
+    # This makes std_dev meaningful: same label across shuffles = 0 variance = score 1.0
+    idx = extract_label_index(resp_lower, expected_labels)
+    if idx >= 0 and len(expected_labels) > 1:
+        return idx / (len(expected_labels) - 1)
     
     return 0.0
 
