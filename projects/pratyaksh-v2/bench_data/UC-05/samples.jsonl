@@ -1,0 +1,14 @@
+{"text": "મારે આજે ઑફિસ જવું છે પણ વરસાદ ખૂબ પડે છે.", "task": "translate", "expected": "I have to go to the office today but it is raining a lot."}
+{"text": "आज का मौसम बहुत अच्छा है, बाहर धूप खिली हुई है.", "task": "translate", "expected": "Today's weather is very nice, the sun is shining outside."}
+{"text": "ગુજરાતી ભાષા ખૂબ જ સુંદર છે અને તેનો ઇતિહાસ ઘણો પુરાણો છે.", "task": "translate", "expected": "The Gujarati language is very beautiful and its history is very ancient."}
+{"text": "यह ईमेल एक शिकायत है जिसमें ग्राहक उत्पाद की गुणवत्ता से नाखुश है.", "task": "classify", "expected": "complaint"}
+{"text": "અમારી કંપનીએ આ વર્ષે ૩૦% વૃદ્ધિ કરી છે અને નવા બજારોમાં પ્રવેશ કરી રહી છે.", "task": "translate", "expected": "Our company has grown 30% this year and is entering new markets."}
+{"text": "मुझे यह प्रोडक्ट बहुत पसंद आया, क्वालिटी बेहतरीन है!", "task": "classify", "expected": "positive"}
+{"text": "કૃપા કરીને મને મીટિંગનો સમય જણાવો, હું ઉપલબ્ધ છું.", "task": "translate", "expected": "Please let me know the meeting time, I am available."}
+{"text": "यह सेवा पूरी तरह से बेकार है, मैं अपना पैसा वापस चाहता हूं.", "task": "classify", "expected": "complaint"}
+{"text": "હું દર રવિવારે મારા પરિવાર સાથે મંદિર જાઉં છું.", "task": "translate", "expected": "I go to the temple with my family every Sunday."}
+{"text": "उत्पाद समय पर डिलीवर हुआ और पैकेजिंग भी अच्छी थी.", "task": "classify", "expected": "positive"}
+{"text": "આ પ્રોજેક્ટ માટે અમારે ત્રણ મહિનાનો સમય લાગશે.", "task": "translate", "expected": "This project will take us three months."}
+{"text": "कोई जवाब नहीं मिल रहा, कस्टमर सपोर्ट से बात करना असंभव है.", "task": "classify", "expected": "complaint"}
+{"text": "तीन दिन हो गए, अभी तक ऑर्डर शिप नहीं हुआ.", "task": "classify", "expected": "complaint"}
+{"text": "બહુ સરસ અનુભવ, ફરીથી ખરીદી કરીશ.", "task": "translate", "expected": "Very nice experience, will buy again."}

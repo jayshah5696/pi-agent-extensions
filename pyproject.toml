@@ -14,4 +14,7 @@ build-backend = "uv_build"
 members = [
     "google_search",
     "source_harvester",
+    "projects/pratyaksh-v2",
+    "projects/pratyaksh-v3",
+    "projects/Multilingual-Doc-Intel",
 ]

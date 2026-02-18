@@ -54,22 +54,25 @@ def discover_citations_llm(content):
     - arxiv_id: The ArXiv ID (e.g., 2507.17746) if applicable.
     - url: The direct URL to the PDF or the blog post if mentioned.
 
-    Return the result ONLY as a JSON list of objects. Do not include markdown code blocks or any other text.
+    Return the result ONLY as a JSON list of objects. No markdown, no explanation, just the JSON list.
     
     TEXT:
-    {content[:30000]}  # Truncate if necessary
+    {content[:30000]}
     """
     
     try:
         response = model.generate_content(prompt)
-        # Clean response text (remove markdown blocks)
         text = response.text.strip()
-        if text.startswith("```json"):
-            text = text[7:-3].strip()
-        elif text.startswith("```"):
-            text = text[3:-3].strip()
+        
+        # Robust extraction: find first JSON array in response
+        import re
+        match = re.search(r'\[.*?\]', text, re.DOTALL)
+        if match:
+            citations = json.loads(match.group(0))
+        else:
+            # Last resort: try to parse the whole thing
+            citations = json.loads(text)
             
-        citations = json.loads(text)
         print(f"[+] LLM found {len(citations)} citations.")
         return citations
     except Exception as e:
@@ -78,19 +81,23 @@ def discover_citations_llm(content):
 
 def resolve_citation_exa(title, authors):
     print(f"[*] Resolving link for: {title} via Exa...")
-    query = f"{title} {authors} pdf paper"
-    cmd = f"mcporter call exa.web_search_exa query='{query}' numResults=1"
+    query = f"{title} {authors} arxiv pdf"
+    cmd = f'mcporter call exa.web_search_exa --arg query="{query}" --arg numResults=3 --arg type="auto"'
     output = run_command(cmd)
     
     if output:
-        # Basic parsing of mcporter output (assuming it prints URLs)
-        match = re.search(r'URL: (https?://[^\s\n]+)', output)
-        if match:
-            url = match.group(1)
-            # Favor PDF links
-            if url.endswith('.pdf') or 'arxiv.org/pdf' in url:
-                return url
-            return url
+        # Look for arxiv URLs specifically
+        arxiv_match = re.search(r'(https?://arxiv\.org/(?:abs|pdf)/[\d\.]+)', output)
+        if arxiv_match:
+            return arxiv_match.group(1)
+        # Fall back to any URL
+        url_match = re.search(r'(https?://[^\s\n"]+\.pdf)', output)
+        if url_match:
+            return url_match.group(1)
+        # Any URL
+        any_url = re.search(r'https?://[^\s\n"]+', output)
+        if any_url:
+            return any_url.group(0)
     return None
 
 def download_and_harvest(input_source, topic, depth=1, seen=None):

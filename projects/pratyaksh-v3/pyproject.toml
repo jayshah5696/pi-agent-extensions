@@ -1,0 +1,11 @@
+[project]
+name = "pratyaksh-v3"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.4.2",
+    "openai>=2.21.0",
+    "python-dotenv>=1.2.1",
+    "requests>=2.32.5",
+]

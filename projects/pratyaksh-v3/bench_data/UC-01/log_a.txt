@@ -1,0 +1,6 @@
+
+    INCIDENT_REPORT:
+    OUTAGE_DETECTED: 2026-02-12 06:15:00
+    PRIMARY_CAUSE_ID: ID-9982-ALPHA
+    SUMMARY: System-wide cascade following sensor spike. Refer to definitions log for physical config details.
+    

@@ -1,0 +1,101 @@
+"""D2: Set Invariance evaluator — deterministic, no judge needed.
+
+Shuffles the input signals in a prompt 3 times and measures variance
+in the model's label confidence across runs. High variance = order-sensitive = bad.
+
+Score = 1 - std_dev(label_confidences)
+"""
+
+import random
+import re
+import json
+from typing import Callable
+
+import numpy as np
+
+
+def shuffle_signals(text: str, n_shuffles: int = 3, seed: int = 42) -> list[str]:
+    """Given a text with comma-separated or newline-separated signals,
+    produce n_shuffles shuffled variants.
+    
+    Heuristic: split on newlines first, then commas if single-line.
+    """
+    rng = random.Random(seed)
+    
+    # Try to identify signal list vs prose
+    lines = [l.strip() for l in text.strip().split("\n") if l.strip()]
+    
+    if len(lines) > 2:
+        # Multi-line: treat each line as a signal
+        signals = lines
+    else:
+        # Single-line: try comma-split
+        parts = [p.strip() for p in text.split(",") if p.strip()]
+        if len(parts) > 2:
+            signals = parts
+        else:
+            # Can't meaningfully shuffle — return original repeated
+            return [text] * n_shuffles
+    
+    variants = []
+    for _ in range(n_shuffles):
+        shuffled = signals.copy()
+        rng.shuffle(shuffled)
+        if len(lines) > 2:
+            variants.append("\n".join(shuffled))
+        else:
+            variants.append(", ".join(shuffled))
+    
+    return variants
+
+
+def extract_confidence(response: str, expected_labels: list[str]) -> float:
+    """Extract a confidence-like signal from model response.
+    
+    Tries to find: explicit confidence score, or falls back to
+    checking if the model's chosen label matches expectation (binary 0/1).
+    """
+    resp_lower = response.lower().strip()
+    
+    # Try to find explicit confidence/probability
+    conf_patterns = [
+        r'confidence[:\s]+(\d+\.?\d*)',
+        r'(\d+\.?\d*)\s*%',
+        r'probability[:\s]+(\d+\.?\d*)',
+        r'score[:\s]+(\d+\.?\d*)',
+    ]
+    
+    for pattern in conf_patterns:
+        match = re.search(pattern, resp_lower)
+        if match:
+            val = float(match.group(1))
+            if val > 1.0:
+                val /= 100.0  # Convert percentage
+            return min(val, 1.0)
+    
+    # Fallback: check which label appears and use 1.0 for match, 0.0 for miss
+    for label in expected_labels:
+        if label.lower().replace("_", " ") in resp_lower or label.lower() in resp_lower:
+            return 1.0
+    
+    return 0.0
+
+
+def evaluate(confidences: list[float]) -> float:
+    """Given a list of confidence values from shuffled runs,
+    return invariance score = 1 - std_dev.
+    
+    Perfect invariance (all same) = 1.0
+    High variance = low score
+    """
+    if len(confidences) < 2:
+        return 1.0
+    
+    std = float(np.std(confidences))
+    return max(0.0, 1.0 - std)
+
+
+def evaluate_from_responses(responses: list[str], expected_labels: list[str]) -> float:
+    """Full pipeline: extract confidences from responses, compute invariance."""
+    confidences = [extract_confidence(r, expected_labels) for r in responses]
+    return evaluate(confidences)

@@ -1,0 +1,15 @@
+{"text": "We're actively evaluating ABM platforms and need to make a decision by end of Q1. Can you schedule a demo with our VP of Marketing?", "label": "high_intent"}
+{"text": "Our current contract with your competitor expires in March. We've been unhappy with their data quality and want to explore alternatives.", "label": "high_intent"}
+{"text": "I saw your booth at SaaStr. Interesting product. Can you send me some case studies for the financial services vertical?", "label": "low_intent"}
+{"text": "Just browsing your website to understand what intent data platforms do. We're a small startup with no budget right now.", "label": "no_intent"}
+{"text": "The board approved a $500K budget for sales intelligence tools. We're comparing 6sense, ZoomInfo, and Demandbase. Can we get a custom pricing proposal?", "label": "high_intent"}
+{"text": "I'm a student researching B2B marketing technology for my thesis. Could you point me to any published benchmarks?", "label": "no_intent"}
+{"text": "We use Bombora for intent data currently. Not looking to switch but curious how your approach differs technically.", "label": "low_intent"}
+{"text": "Our CMO mentioned your platform in our last strategy meeting. She wants to see a POC with our Salesforce instance before the fiscal year ends.", "label": "high_intent"}
+{"text": "Downloaded your whitepaper on account-based orchestration. Good read. We might revisit this topic next year when we have headcount.", "label": "low_intent"}
+{"text": "URGENT: We need to onboard an intent data provider within 2 weeks. Legal has pre-approved vendor terms. Who do I talk to about enterprise pricing?", "label": "high_intent"}
+{"text": "I manage our tech blog and would love to feature a guest post from your team about the future of B2B data.", "label": "no_intent"}
+{"text": "We attended your webinar on predictive analytics. Interesting methodology. Adding it to our evaluation list for H2 planning.", "label": "low_intent"}
+{"text": "Our RevOps team ran a bake-off last quarter. 6sense scored highest on data accuracy. We'd like to start contract negotiations.", "label": "high_intent"}
+{"text": "Can you explain what 6sense does? I keep seeing ads but I'm not sure if it's relevant for a B2C company like ours.", "label": "no_intent"}
+{"text": "We just raised a Series B and are building out our go-to-market stack. Intent data is on our priority list for Q2.", "label": "low_intent"}
