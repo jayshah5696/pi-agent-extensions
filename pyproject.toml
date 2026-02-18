@@ -13,4 +13,5 @@ build-backend = "uv_build"
 [tool.uv.workspace]
 members = [
     "google_search",
+    "source_harvester",
 ]

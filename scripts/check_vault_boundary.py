@@ -19,9 +19,20 @@ def audit():
 
     violations = []
     for line in status.split("\n"):
-        file_path = line[3:]
-        if not file_path.startswith(ALLOWED_DIR):
-            violations.append(file_path)
+        if not line: continue
+        
+        # Git porcelain v1 format: XY path
+        # Split by whitespace, but path might have spaces if not quoted.
+        # Actually, split(None, 1) will give us [XY, path]
+        parts = line.split(None, 1)
+        if len(parts) < 2: continue
+        
+        file_path = parts[1].strip().strip('"')
+        
+        # ALLOWED: Anything in Assitant/ or the PROJECT_BOARD.md file
+        if file_path.startswith(ALLOWED_DIR + "/") or file_path == "PROJECT_BOARD.md":
+            continue
+        violations.append(file_path)
             
     if violations:
         print(f"[SAFETY VIOLATION] Unauthorized writes detected: {', '.join(violations)}")

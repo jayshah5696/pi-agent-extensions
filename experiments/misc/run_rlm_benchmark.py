@@ -39,7 +39,7 @@ def execute_benchmark():
     dspy.configure(lm=lm)
 
     print(f"--- Loading Benchmark Data ---")
-    corpus = load_bench_data("github/jadoo-labs-experiments/bench_data")
+    corpus = load_bench_data("bench_data")
     query = "What specific physical configuration caused the outage referenced in the logs?"
 
     print(f"--- Running Challenger (RLM) ---")

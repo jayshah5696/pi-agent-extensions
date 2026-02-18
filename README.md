@@ -1,27 +1,24 @@
-# jadoo-labs 🧪
+# Jadoo Labs Experiments
 
-Jadoo Agent experimentation and execution layer.
+This repository follows the **Harness Engineering** standard for agentic scalability.
 
-## Project Index
+## Quickstart
 
-| Project Name | Path | Description | Status | Tech Stack | Obsidian Link |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Core Utilities** | `core/` | Shared Jadoo logic and modules | [ACTIVE] | `uv`, `python` | [[Jadoo-Core]] |
-| **LLM Evaluation** | `projects/llm-eval/` | Benchmarking and trace analysis | [PLANNED] | `uv`, `exa`, `eval` | [[LLM-Eval]] |
-| **Daily Sync** | `scripts/` | Automation for notes and code bridge | [ACTIVE] | `uv`, `python` | [[Daily-Sync]] |
+```bash
+# Install dependencies
+uv sync
 
-## Documentation & Standards
+# Validate repository structure
+make audit
+```
 
-The definitive guide for this setup is documented in Obsidian:
-- **Architecture & Workflow:** [[Jadoo-Labs-Setup]]
-- **Security Protocols:** [[Security-Audit-2026-02-07]]
+## Structure
 
-## Guidelines
+*   `projects/`: Full applications (e.g., `Sadhana` macOS app).
+*   `scripts/`: Maintenance tools (quota checks, audits).
+*   `experiments/`: Research scripts and benchmarks.
+*   `core/`: Shared libraries.
 
-- **Standard:** Use `uv init` for all new sub-projects.
-- **Execution:** Run scripts via `uv run <path_to_script>`.
-- **Commits:** Batch updates committed daily at **1:00 AM PST**.
-- **Privacy:** All secrets must stay in the root `.env` (excluded from git).
-
----
-*Managed by Jadoo ♊*
+## Agent Context
+Read `CONTEXT.md` for architectural guidelines.
+Read `AGENTS.md` for operational rules.
