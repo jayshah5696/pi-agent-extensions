@@ -100,41 +100,55 @@ def resolve_citation_exa(title, authors):
             return any_url.group(0)
     return None
 
-def download_and_harvest(input_source, topic, depth=1, seen=None):
+def url_to_filename(url: str) -> str:
+    """Generate a safe filename from a URL."""
+    # Extract ArXiv ID if present
+    arxiv_match = re.search(r'arxiv\.org/(?:abs|pdf)/([\d\.]+)', url)
+    if arxiv_match:
+        return arxiv_match.group(1)
+    # Use last path segment, strip query params
+    name = url.rstrip('/').split('/')[-1].split('?')[0]
+    # Sanitize
+    name = re.sub(r'[^\w\-.]', '_', name)
+    return name or 'source'
+
+
+def download_and_harvest(input_source, topic, depth=1, seen=None, is_root=False):
     if seen is None:
         seen = set()
-    
+        is_root = True
+
     if depth < 0 or input_source in seen:
         return
-    
+
     seen.add(input_source)
-    
+
     base_dir = Path(f"/home/node/.openclaw/workspace/Assitant/Research/Harvester/{topic}")
     base_dir.mkdir(parents=True, exist_ok=True)
-    
+
     is_url = input_source.startswith('http')
-    
+
     if is_url:
         print(f"[*] Fetching URL: {input_source}")
-        # Use web_fetch to bypass blocks and get clean markdown for discovery
-        # But we still want markitdown for the local file if it's a PDF
-        if input_source.lower().endswith('.pdf') or 'arxiv.org/pdf' in input_source:
-            filename = Path(input_source).name
-            if '.' not in filename:
-                filename = input_source.split('/')[-1] + ".pdf"
-            local_path = base_dir / filename
+        is_pdf = input_source.lower().endswith('.pdf') or 'arxiv.org/pdf' in input_source
+
+        if is_pdf:
+            arxiv_match = re.search(r'([\d]{4}\.\d+)', input_source)
+            stem = arxiv_match.group(1) if arxiv_match else url_to_filename(input_source)
+            local_path = base_dir / f"{stem}.pdf"
             subprocess.run(f"curl -L -A 'Mozilla/5.0' '{input_source}' -o '{local_path}'", shell=True)
             md_content = convert_to_md(local_path)
         else:
-            # It's a blog post, get clean content via web_fetch bridge
-            # Note: We simulate web_fetch logic here since we are in a script
-            # For simplicity, we'll try curl with a better header first
-            local_path = base_dir / "root_source.html"
+            # Blog / ArXiv abs page
+            stem = "root" if is_root else url_to_filename(input_source)
+            local_path = base_dir / f"{stem}.html"
             subprocess.run(f"curl -L -A 'Mozilla/5.0' '{input_source}' -o '{local_path}'", shell=True)
             md_content = convert_to_md(local_path)
     else:
         local_path = Path(input_source)
+        stem = local_path.stem
         md_content = convert_to_md(local_path)
+
     if not md_content:
         return
 
@@ -143,18 +157,31 @@ def download_and_harvest(input_source, topic, depth=1, seen=None):
         f.write(md_content)
     print(f"[+] Saved Markdown to {md_path}")
 
-    # LLM Discovery
+    # Only extract + recurse citations from root source
+    if depth <= 0:
+        return
+
     citations = discover_citations_llm(md_content)
     for cite in citations:
         url = cite.get('url')
-        if not url or not (url.endswith('.pdf') or 'arxiv.org' in url):
-            # Try to resolve via Exa
-            resolved_url = resolve_citation_exa(cite.get('title', ''), cite.get('authors', ''))
-            if resolved_url:
-                url = resolved_url
-        
-        if url and url not in seen:
-            download_and_harvest(url, topic, depth - 1, seen)
+        # Only follow ArXiv PDFs (not blog posts / general URLs) to avoid infinite loops
+        if url and 'arxiv.org' in url:
+            # Prefer PDF link
+            if '/abs/' in url:
+                url = url.replace('/abs/', '/pdf/')
+            if url not in seen:
+                download_and_harvest(url, topic, depth - 1, seen, is_root=False)
+        elif not url:
+            # Try Exa only for papers without a direct URL
+            arxiv_id = cite.get('arxiv_id', '').strip()
+            if arxiv_id:
+                url = f"https://arxiv.org/pdf/{arxiv_id}"
+                if url not in seen:
+                    download_and_harvest(url, topic, depth - 1, seen, is_root=False)
+            else:
+                resolved_url = resolve_citation_exa(cite.get('title', ''), cite.get('authors', ''))
+                if resolved_url and 'arxiv.org' in resolved_url and resolved_url not in seen:
+                    download_and_harvest(resolved_url, topic, depth - 1, seen, is_root=False)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Gyan-Sanchay v2 (Recursive Harvester)")
