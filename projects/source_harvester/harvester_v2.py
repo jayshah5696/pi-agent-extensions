@@ -173,7 +173,7 @@ def download_and_harvest(input_source, topic, depth=1, seen=None, is_root=False)
                 download_and_harvest(url, topic, depth - 1, seen, is_root=False)
         elif not url:
             # Try Exa only for papers without a direct URL
-            arxiv_id = cite.get('arxiv_id', '').strip()
+            arxiv_id = (cite.get('arxiv_id') or '').strip()
             if arxiv_id:
                 url = f"https://arxiv.org/pdf/{arxiv_id}"
                 if url not in seen:
