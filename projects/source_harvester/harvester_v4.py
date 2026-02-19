@@ -130,14 +130,15 @@ def arxiv_to_pdf_url(url: str) -> str:
 def get_references_s2(arxiv_id: str) -> list[dict]:
     """
     Fetch references for an ArXiv paper via Semantic Scholar API.
-    Returns list of {arxiv_id, title, authors, year} dicts for refs that have ArXiv IDs.
+    Returns list of {arxiv_id, title, authors, year, citationCount} dicts for refs that have ArXiv IDs.
+    Sorted by citationCount descending.
     """
     headers = {}
     if s2_api_key:
         headers["x-api-key"] = s2_api_key
 
     url = f"{S2_API_BASE}/paper/arXiv:{arxiv_id}/references"
-    params = {"fields": "title,authors,externalIds,year", "limit": 500}
+    params = {"fields": "title,authors,externalIds,year,citationCount", "limit": 500}
 
     print(f"  [S2] Querying Semantic Scholar for arXiv:{arxiv_id}...")
     try:
@@ -174,6 +175,7 @@ def get_references_s2(arxiv_id: str) -> list[dict]:
         title = cp.get("title") or ""
         authors_list = cp.get("authors") or []
         year = cp.get("year")
+        citation_count = cp.get("citationCount") or 0
         authors_str = ", ".join(a.get("name", "") for a in authors_list[:3])
         if len(authors_list) > 3:
             authors_str += " et al."
@@ -184,9 +186,15 @@ def get_references_s2(arxiv_id: str) -> list[dict]:
                 "title": title,
                 "authors": authors_str,
                 "year": year,
+                "citationCount": citation_count,
             })
 
+    # Sort by citation count descending
+    refs.sort(key=lambda r: r.get("citationCount", 0), reverse=True)
+
     print(f"  [S2] Found {total_refs} total references, {len(refs)} with ArXiv IDs")
+    if refs:
+        print(f"  [S2] Top cited: {refs[0].get('title', '?')[:60]} ({refs[0].get('citationCount', 0)} citations)")
     return refs
 
 
@@ -411,9 +419,13 @@ def generate_index(
     print("[*] Generating index.md...")
     today = datetime.date.today().isoformat()
 
-    # Build harvested papers table
-    rows = []
-    for i, p in enumerate(papers, 1):
+    # Separate root paper from cited papers
+    root_papers = [p for p in papers if p.get("is_root")]
+    cited_papers = [p for p in papers if not p.get("is_root")]
+
+    # Build root paper row
+    root_rows = []
+    for i, p in enumerate(root_papers, 1):
         title = p.get("title", "Unknown")
         authors = p.get("authors", "—")
         arxiv_link = p.get("arxiv_url", "—")
@@ -422,25 +434,41 @@ def generate_index(
             arxiv_link = f"[link]({arxiv_link})"
         if local_link and local_link != "—":
             local_link = f"[{Path(local_link).name}]({Path(local_link).name})"
-        rows.append(f"| {i} | {title} | {authors} | {arxiv_link} | {local_link} |")
+        root_rows.append(f"| {i} | {title} | {authors} | {arxiv_link} | {local_link} |")
 
-    table = "\n".join(rows) if rows else "| — | No papers harvested | — | — | — |"
+    root_table = "\n".join(root_rows) if root_rows else "| — | No root paper | — | — | — |"
 
-    # Build S2 references list (all ArXiv-linked refs from Semantic Scholar)
+    # Build downloaded citations table (top 10)
+    cited_rows = []
+    for i, p in enumerate(cited_papers, 1):
+        title = p.get("title", "Unknown")
+        authors = p.get("authors", "—")
+        citations = p.get("citationCount", "—")
+        arxiv_link = p.get("arxiv_url", "—")
+        local_link = p.get("local_md", "—")
+        if arxiv_link and arxiv_link != "—":
+            arxiv_link = f"[link]({arxiv_link})"
+        if local_link and local_link != "—":
+            fname = Path(local_link).name
+            local_link = f"[{fname}](cited/{fname})"
+        cited_rows.append(f"| {i} | {title} | {authors} | {citations} | {arxiv_link} | {local_link} |")
+
+    cited_table = "\n".join(cited_rows) if cited_rows else "| — | No citations downloaded | — | — | — | — |"
+
+    # Build all S2 references table
     s2_section = ""
     if s2_refs:
         s2_lines = []
         for i, ref in enumerate(s2_refs, 1):
             aid = ref.get("arxiv_id", "")
             title = ref.get("title", "Untitled")
-            authors = ref.get("authors", "")
-            year = ref.get("year", "")
-            year_str = f" ({year})" if year else ""
-            link = f"https://arxiv.org/abs/{aid}" if aid else ""
-            s2_lines.append(f"{i}. **{title}**{year_str} — {authors} — [arXiv:{aid}]({link})")
+            year = ref.get("year", "—")
+            cc = ref.get("citationCount", 0)
+            link = f"[arXiv:{aid}](https://arxiv.org/abs/{aid})" if aid else "—"
+            s2_lines.append(f"| {i} | {title} | {year} | {cc} | {link} |")
         s2_section = "\n".join(s2_lines)
     else:
-        s2_section = "_No Semantic Scholar references found._"
+        s2_section = "| — | No references found | — | — | — |"
 
     # Gemini summaries
     summary_excerpt = root_md_content[:8000] if root_md_content else ""
@@ -474,17 +502,25 @@ Paper excerpt:
 **Date:** {today}
 **Root source:** {root_url}
 **Harvester:** Gyan-Sanchay v4 (S2 API + pdfplumber + Gemini)
-**Papers downloaded:** {len(papers)}
+**Papers downloaded:** {len(papers)} (1 root + {len(cited_papers)} cited)
 **ArXiv references found (S2):** {len(s2_refs)}
 
-## Downloaded Papers
+## Root Paper
 
 | # | Title | Authors | ArXiv | Local |
 |---|---|---|---|---|
-{table}
+{root_table}
 
-## All ArXiv References (Semantic Scholar)
+## Downloaded Citations (Top 10 by citation count)
 
+| # | Title | Authors | Citations | ArXiv | Local |
+|---|---|---|---|---|---|
+{cited_table}
+
+## All References (Semantic Scholar, {len(s2_refs)} total)
+
+| # | Title | Year | Citations | ArXiv |
+|---|---|---|---|---|
 {s2_section}
 
 ## Key Themes
@@ -514,12 +550,14 @@ def download_and_harvest(
     seen: set | None = None,
     is_root: bool = False,
     papers: list | None = None,
+    original_depth: int | None = None,
+    ref_citation_count: int = 0,
 ) -> tuple[Optional[str], list[dict], list[dict]]:
     """
     Recursively harvest a source and its citations.
 
     Returns (root_md_content, papers_list, s2_refs) where:
-      - papers_list: dicts with title, authors, arxiv_url, local_md (downloaded)
+      - papers_list: dicts with title, authors, arxiv_url, local_md, is_root, citationCount
       - s2_refs: all Semantic Scholar references (for index listing)
     """
     if seen is None:
@@ -527,6 +565,8 @@ def download_and_harvest(
         is_root = True
     if papers is None:
         papers = []
+    if original_depth is None:
+        original_depth = depth
 
     s2_refs_all = []
 
@@ -536,6 +576,13 @@ def download_and_harvest(
 
     topic_dir = output_dir / topic
     topic_dir.mkdir(parents=True, exist_ok=True)
+
+    # Cited papers go into cited/ subfolder
+    if is_root:
+        save_dir = topic_dir
+    else:
+        save_dir = topic_dir / "cited"
+        save_dir.mkdir(parents=True, exist_ok=True)
 
     is_url = input_source.startswith("http")
 
@@ -549,12 +596,27 @@ def download_and_harvest(
         else:
             stem = url_to_filename(input_source)
 
+        # Skip already-existing cited papers (Change C)
+        if not is_root and arxiv_id:
+            existing_md = topic_dir / "cited" / f"{arxiv_id}.md"
+            if existing_md.exists():
+                print(f"  [SKIP] {arxiv_id}.md already exists in cited/, reusing")
+                papers.append({
+                    "title": arxiv_id,
+                    "authors": "—",
+                    "arxiv_url": f"https://arxiv.org/abs/{arxiv_id}",
+                    "local_md": str(existing_md),
+                    "is_root": False,
+                    "citationCount": ref_citation_count,
+                })
+                return None, papers, s2_refs_all
+
         # Dedup check for non-root ArXiv papers
         if arxiv_id and not is_root:
             if arxiv_id in dedup_cache:
                 existing_path = Path(dedup_cache[arxiv_id])
                 if existing_path.exists():
-                    link_path = topic_dir / existing_path.name
+                    link_path = save_dir / existing_path.name
                     if not link_path.exists():
                         try:
                             link_path.symlink_to(existing_path)
@@ -566,6 +628,8 @@ def download_and_harvest(
                         "authors": "—",
                         "arxiv_url": f"https://arxiv.org/abs/{arxiv_id}",
                         "local_md": str(link_path),
+                        "is_root": False,
+                        "citationCount": ref_citation_count,
                     })
                     return None, papers, s2_refs_all
 
@@ -577,27 +641,27 @@ def download_and_harvest(
         print(f"\n[{'ROOT' if is_root else 'CITE'}] {url}")
 
         # --- Citation extraction strategy ---
-        citation_refs = []  # List of {arxiv_id, title, authors, year}
+        citation_refs = []  # List of {arxiv_id, title, authors, year, citationCount}
 
         if arxiv_id:
             # TIER 1: Semantic Scholar API
             s2_refs = get_references_s2(arxiv_id)
-            s2_refs_all = s2_refs  # Keep full list for index
+            s2_refs_all = s2_refs  # Keep full list for index (already sorted by citationCount)
             citation_refs = s2_refs
 
             if not s2_refs:
                 # TIER 2: Download PDF first, then pdfplumber
                 print("  [*] S2 returned no refs — downloading PDF for pdfplumber fallback...")
-                md_content, md_path, raw_path = fetch_and_convert(url, topic_dir, stem)
+                md_content, md_path, raw_path = fetch_and_convert(url, save_dir, stem)
                 if raw_path and raw_path.suffix == ".pdf":
                     plumber_ids = get_references_pdfplumber(str(raw_path))
-                    citation_refs = [{"arxiv_id": aid, "title": "", "authors": "", "year": None} for aid in plumber_ids]
+                    citation_refs = [{"arxiv_id": aid, "title": "", "authors": "", "year": None, "citationCount": 0} for aid in plumber_ids]
             else:
                 # S2 worked — still download the root PDF for md content
-                md_content, md_path, raw_path = fetch_and_convert(url, topic_dir, stem)
+                md_content, md_path, raw_path = fetch_and_convert(url, save_dir, stem)
         else:
             # Non-ArXiv URL: download and use Gemini (Tier 3)
-            md_content, md_path, raw_path = fetch_and_convert(url, topic_dir, stem)
+            md_content, md_path, raw_path = fetch_and_convert(url, save_dir, stem)
             if md_content:
                 llm_cites = discover_citations_llm(md_content)
                 for c in llm_cites:
@@ -608,6 +672,7 @@ def download_and_harvest(
                             "title": c.get("title", ""),
                             "authors": c.get("authors", ""),
                             "year": None,
+                            "citationCount": 0,
                         })
     else:
         # Local file
@@ -616,7 +681,7 @@ def download_and_harvest(
         if not local_file.exists():
             print(f"  [ERROR] File not found: {input_source}")
             return None, papers, s2_refs_all
-        md_content, md_path = fetch_and_convert_local(local_file, topic_dir)
+        md_content, md_path = fetch_and_convert_local(local_file, save_dir)
         raw_path = local_file
         arxiv_id = None
         citation_refs = []
@@ -624,7 +689,7 @@ def download_and_harvest(
         # For local PDFs, try pdfplumber
         if local_file.suffix.lower() == ".pdf":
             plumber_ids = get_references_pdfplumber(str(local_file))
-            citation_refs = [{"arxiv_id": aid, "title": "", "authors": "", "year": None} for aid in plumber_ids]
+            citation_refs = [{"arxiv_id": aid, "title": "", "authors": "", "year": None, "citationCount": 0} for aid in plumber_ids]
 
     # --- Record paper entry ---
     if is_url and arxiv_id:
@@ -641,6 +706,8 @@ def download_and_harvest(
         "authors": paper_authors,
         "arxiv_url": f"https://arxiv.org/abs/{arxiv_id}" if (is_url and arxiv_id) else "—",
         "local_md": str(md_path) if md_path else "—",
+        "is_root": is_root,
+        "citationCount": ref_citation_count,
     }
     papers.append(paper_entry)
 
@@ -652,8 +719,15 @@ def download_and_harvest(
 
     # --- Recurse into citations ---
     if depth > 0 and citation_refs:
-        print(f"\n[*] Recursing into {len(citation_refs)} cited ArXiv papers (depth={depth})...")
-        for i, ref in enumerate(citation_refs):
+        # Top-10 filter: only download top 10 by citation count
+        top_refs = citation_refs[:10]
+        skipped_refs = citation_refs[10:]
+
+        print(f"\n[*] Downloading top {len(top_refs)} of {len(citation_refs)} cited papers (by citation count, depth={depth})...")
+        if skipped_refs:
+            print(f"  [*] Skipping {len(skipped_refs)} lower-cited references (listed in index.md)")
+
+        for i, ref in enumerate(top_refs):
             ref_arxiv_id = ref["arxiv_id"]
             ref_url = f"https://arxiv.org/pdf/{ref_arxiv_id}"
 
@@ -663,7 +737,8 @@ def download_and_harvest(
             # Mark arxiv_id as seen too
             seen.add(ref_arxiv_id)
 
-            print(f"\n  [{i+1}/{len(citation_refs)}] {ref.get('title', ref_arxiv_id)[:80]}")
+            cc = ref.get("citationCount", 0)
+            print(f"\n  [{i+1}/{len(top_refs)}] {ref.get('title', ref_arxiv_id)[:80]} ({cc} citations)")
 
             # Rate limit for S2 if authenticated
             if s2_api_key:
@@ -678,6 +753,8 @@ def download_and_harvest(
                 seen,
                 is_root=False,
                 papers=papers,
+                original_depth=original_depth,
+                ref_citation_count=cc,
             )
 
     return root_md, papers, s2_refs_all
