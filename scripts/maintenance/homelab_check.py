@@ -8,7 +8,6 @@ import os
 SERVICES = {
     "Homepage": "https://home.jay-hirajoshi.ts.net",
     "AdGuard Home": "https://hpmini.jay-hirajoshi.ts.net/adguard/login.html",
-    "Glances": "https://hpmini.jay-hirajoshi.ts.net/glances/index.html",
     "Immich": "https://immich.jay-hirajoshi.ts.net",
     "Kopia": "https://kopia.jay-hirajoshi.ts.net",
     "Speedtest Tracker": "https://myspeed.jay-hirajoshi.ts.net",
@@ -28,7 +27,6 @@ def check_service(name, url):
         latency = (time.time() - start_time) * 1000
         
         # 2xx is OK, 3xx (Redirect) is OK, 401 (Unauthorized) is OK (service is up)
-        # 404 is allowed specifically for Glances/Subpaths if we can't find a better endpoint
         # but we prioritize real health checks.
         if response.status_code < 400 or response.status_code in [401, 404]:
             status_icon = "✅"
