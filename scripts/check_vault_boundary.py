@@ -29,8 +29,8 @@ def audit():
         
         file_path = parts[1].strip().strip('"')
         
-        # ALLOWED: Anything in Assitant/ or the PROJECT_BOARD.md file
-        if file_path.startswith(ALLOWED_DIR + "/") or file_path == "PROJECT_BOARD.md":
+        # ALLOWED: Anything in Assitant/, PROJECT_BOARD.md, or MEMORY.md (agent-managed root files)
+        if file_path.startswith(ALLOWED_DIR + "/") or file_path in ("PROJECT_BOARD.md", "MEMORY.md"):
             continue
         violations.append(file_path)
             
