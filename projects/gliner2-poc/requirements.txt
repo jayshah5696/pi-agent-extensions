@@ -1,0 +1,55 @@
+# GLiNER2 POC - Core dependencies
+# Install with: uv sync
+# Or: uv pip install -r requirements.txt
+
+# GLiNER2 (unified NER + classification model from Fastino AI)
+gliner2>=1.1.0
+
+# HuggingFace ecosystem
+transformers>=4.40.0
+datasets>=2.19.0
+tokenizers>=0.19.0
+
+# PyTorch (Apple Silicon: installs CPU version automatically via uv)
+torch>=2.2.0
+
+# spaCy NER baseline
+# After install: uv run python -m spacy download en_core_web_sm
+spacy>=3.7.0
+
+# Evaluation metrics
+seqeval>=1.2.2
+scikit-learn>=1.4.0
+
+# Data handling
+pandas>=2.2.0
+numpy>=1.26.0
+
+# Progress bars
+tqdm>=4.66.0
+
+# Visualization
+matplotlib>=3.8.0
+seaborn>=0.13.0
+
+# Jupyter notebook
+jupyter>=1.0.0
+ipykernel>=6.29.0
+notebook>=7.0.0
+
+# Utilities
+accelerate>=0.28.0
+huggingface-hub>=0.22.0
+
+# GLiNER v1 and ModernBERT GLiNER baselines (original GLiNER architecture)
+gliner>=0.2.19
+
+# Flair NER baseline (BiLSTM-CRF sequence labeler)
+flair>=0.14.0
+
+# SetFit zero-shot classification baseline (sentence-transformers cosine similarity)
+setfit>=1.0.0
+
+# FastText zero-shot classification baseline (bag-of-words word vector averaging)
+# Note: fasttext-wheel is the Mac-compatible build of fasttext
+fasttext-wheel>=0.9.2
