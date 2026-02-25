@@ -1,7 +1,7 @@
 {
   "name": "pi-agent-extensions",
   "version": "0.1.0",
-  "description": "Pi Agent extension pack: ask_user, handoff, sessions, whimsical",
+  "description": "Pi Agent extension pack: ask_user, handoff, sessions, whimsical, langsmith-tracer",
   "type": "module",
   "license": "MIT",
   "keywords": [
@@ -17,12 +17,17 @@
     "extensions",
     "README.md"
   ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
   "pi": {
     "extensions": [
       "./extensions/ask-user/index.ts",
       "./extensions/handoff/index.ts",
       "./extensions/sessions/index.ts",
-      "./extensions/whimsical/index.ts"
+      "./extensions/whimsical/index.ts",
+      "./extensions/langsmith-tracer/index.ts"
     ]
   },
   "peerDependencies": {
@@ -30,5 +35,11 @@
     "@mariozechner/pi-coding-agent": "*",
     "@mariozechner/pi-tui": "*",
     "@sinclair/typebox": "*"
+  },
+  "dependencies": {
+    "langsmith": "^0.5.6"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.18"
   }
 }
