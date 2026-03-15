@@ -41,6 +41,7 @@ import { complete, type Model, type Api, type UserMessage, type TextContent } fr
 import { StringEnum } from "@mariozechner/pi-ai";
 import { Box, Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
+import crypto from "node:crypto";
 import { promises as fs } from "node:fs";
 import * as net from "node:net";
 import * as os from "node:os";
@@ -603,7 +604,7 @@ async function handleCommand(
 	// Subscribe to turn_end
 	if (command.type === "subscribe") {
 		if (command.event === "turn_end") {
-			const subscriptionId = id ?? `sub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+			const subscriptionId = id ?? `sub_${crypto.randomBytes(16).toString("hex")}`;
 			state.turnEndSubscriptions.push({ socket, subscriptionId });
 
 			const cleanup = () => {

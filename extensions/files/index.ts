@@ -7,6 +7,7 @@
  */
 
 import { spawnSync } from "node:child_process";
+import crypto from "node:crypto";
 import {
 	existsSync,
 	mkdtempSync,
@@ -693,7 +694,7 @@ const openPath = async (pi: ExtensionAPI, ctx: ExtensionContext, target: FileEnt
 };
 
 const openExternalEditor = (tui: TUI, editorCmd: string, content: string): string | null => {
-	const tmpFile = path.join(os.tmpdir(), `pi-files-edit-${Date.now()}.txt`);
+	const tmpFile = path.join(os.tmpdir(), `pi-files-edit-${crypto.randomBytes(16).toString("hex")}.txt`);
 
 	try {
 		writeFileSync(tmpFile, content, "utf8");
