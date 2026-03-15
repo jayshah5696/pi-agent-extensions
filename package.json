@@ -62,7 +62,7 @@
   },
   "devDependencies": {
     "@sinclair/typebox": "^0.34.48",
-    "tsx": "^4.19.0"
+    "tsx": "^4.21.0"
   },
   "scripts": {
     "test": "node --import tsx --test 'tests/**/*.test.ts' 'tests/*.test.ts'"
