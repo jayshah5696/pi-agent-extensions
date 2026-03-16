@@ -73,7 +73,7 @@ Add logging to the handoff extension:
 // In index.ts, after extraction
 if (process.env.HANDOFF_TRACE_DIR) {
   const trace = {
-    trace_id: `handoff_${Date.now()}`,
+    trace_id: `handoff_${crypto.randomBytes(16).toString("hex")}`,
     timestamp: new Date().toISOString(),
     session_file: currentSessionFile,
     user_goal: goal,

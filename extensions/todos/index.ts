@@ -781,11 +781,19 @@ async function garbageCollectTodos(todosDir: string, settings: TodoSettings): Pr
 	);
 }
 
+function validateTodoId(id: string): void {
+	if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
+		throw new Error(`Invalid todo id: '${id}'. Only alphanumeric characters, dashes, and underscores are allowed.`);
+	}
+}
+
 function getTodoPath(todosDir: string, id: string): string {
+	validateTodoId(id);
 	return path.join(todosDir, `${id}.md`);
 }
 
 function getLockPath(todosDir: string, id: string): string {
+	validateTodoId(id);
 	return path.join(todosDir, `${id}.lock`);
 }
 
@@ -928,7 +936,7 @@ async function writeTodoFile(filePath: string, todo: TodoRecord) {
 
 async function generateTodoId(todosDir: string): Promise<string> {
 	for (let attempt = 0; attempt < 10; attempt += 1) {
-		const id = crypto.randomBytes(4).toString("hex");
+		const id = crypto.randomBytes(16).toString("hex");
 		const todoPath = getTodoPath(todosDir, id);
 		if (!existsSync(todoPath)) return id;
 	}

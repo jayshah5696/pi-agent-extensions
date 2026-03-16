@@ -15,6 +15,7 @@
  * 4. Save the conversation text to evals/handoff/traces/<trace-id>_conversation.txt
  */
 
+import crypto from "node:crypto";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -107,7 +108,7 @@ function main() {
   
   const sessionPath = args[0];
   const goal = args[1];
-  const traceId = args[2] || `handoff_${Date.now()}`;
+  const traceId = args[2] || `handoff_${crypto.randomBytes(16).toString("hex")}`;
   
   console.log(`\nCollecting trace from: ${sessionPath}`);
   console.log(`Goal: ${goal}`);
