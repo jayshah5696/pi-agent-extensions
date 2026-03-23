@@ -697,7 +697,7 @@ const openExternalEditor = (tui: TUI, editorCmd: string, content: string): strin
 	const tmpFile = path.join(os.tmpdir(), `pi-files-edit-${crypto.randomBytes(16).toString("hex")}.txt`);
 
 	try {
-		writeFileSync(tmpFile, content, "utf8");
+		writeFileSync(tmpFile, content, { encoding: "utf8", mode: 0o600 });
 		tui.stop();
 
 		const [editor, ...editorArgs] = editorCmd.split(" ");

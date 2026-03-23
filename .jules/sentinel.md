@@ -1,0 +1,4 @@
+## 2025-02-14 - [Insecure Temporary File Permissions]
+**Vulnerability:** Information Disclosure via insecure temporary files. The `openExternalEditor` function in the files extension wrote to `os.tmpdir()` with default permissions (`0644`), exposing file contents to all local users.
+**Learning:** When creating temporary files in shared directories like `/tmp` (which `os.tmpdir()` often resolves to), default file creation permissions are insufficient to protect sensitive data.
+**Prevention:** Always specify `mode: 0o600` when creating temporary files containing sensitive data in shared directories, or use secure directory creation methods like `mkdtemp` (`0700`) to isolate the files.
