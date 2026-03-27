@@ -697,7 +697,7 @@ const openExternalEditor = (tui: TUI, editorCmd: string, content: string): strin
 	const tmpFile = path.join(os.tmpdir(), `pi-files-edit-${crypto.randomBytes(16).toString("hex")}.txt`);
 
 	try {
-		writeFileSync(tmpFile, content, "utf8");
+		writeFileSync(tmpFile, content, { encoding: "utf8", mode: 0o600 });
 		tui.stop();
 
 		const [editor, ...editorArgs] = editorCmd.split(" ");
@@ -814,15 +814,15 @@ const openDiff = async (pi: ExtensionAPI, ctx: ExtensionContext, target: FileEnt
 			ctx.ui.notify(errorMessage, "error");
 			return;
 		}
-		writeFileSync(tmpFile, result.stdout ?? "", "utf8");
+		writeFileSync(tmpFile, result.stdout ?? "", { encoding: "utf8", mode: 0o600 });
 	} else {
-		writeFileSync(tmpFile, "", "utf8");
+		writeFileSync(tmpFile, "", { encoding: "utf8", mode: 0o600 });
 	}
 
 	let workingPath = target.resolvedPath;
 	if (!existsSync(target.resolvedPath)) {
 		workingPath = path.join(tmpDir, `pi-files-working-${path.basename(target.displayPath)}`);
-		writeFileSync(workingPath, "", "utf8");
+		writeFileSync(workingPath, "", { encoding: "utf8", mode: 0o600 });
 	}
 
 	const openResult = await pi.exec("code", ["--diff", tmpFile, workingPath], { cwd: gitRoot });
