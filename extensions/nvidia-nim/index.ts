@@ -69,7 +69,7 @@ export function loadModelsConfigSync(): NvidiaModelsConfig | null {
 export async function saveModelsConfig(config: NvidiaModelsConfig): Promise<void> {
   const configPath = getConfigPath();
   await fs.mkdir(path.dirname(configPath), { recursive: true });
-  await fs.writeFile(configPath, JSON.stringify(config, null, 2), "utf-8");
+  await fs.writeFile(configPath, JSON.stringify(config, null, 2), { encoding: "utf-8", mode: 0o600 });
 }
 
 /** Parse model IDs from editor text, ignoring comments and blank lines.

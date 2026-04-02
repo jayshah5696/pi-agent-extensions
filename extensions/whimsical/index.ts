@@ -263,7 +263,7 @@ async function saveStateToSettings(): Promise<void> {
   } satisfies PersistedWhimsyConfig;
 
   await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(settingsPath, JSON.stringify(parsed, null, 2), "utf-8");
+  await fs.writeFile(settingsPath, JSON.stringify(parsed, null, 2), { encoding: "utf-8", mode: 0o600 });
 }
 
 async function ensureStateLoaded(): Promise<void> {
