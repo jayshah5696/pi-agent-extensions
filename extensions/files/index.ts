@@ -742,7 +742,7 @@ const editPath = async (ctx: ExtensionContext, target: FileEntry, content: strin
 	}
 
 	try {
-		writeFileSync(target.resolvedPath, updated, "utf8");
+		writeFileSync(target.resolvedPath, updated, { encoding: "utf8", mode: 0o600 });
 	} catch {
 		ctx.ui.notify(`Failed to save ${target.displayPath}`, "error");
 	}

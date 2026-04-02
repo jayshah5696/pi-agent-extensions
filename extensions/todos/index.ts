@@ -923,7 +923,7 @@ async function readTodoFile(filePath: string, idFallback: string): Promise<TodoR
 }
 
 async function writeTodoFile(filePath: string, todo: TodoRecord) {
-	await fs.writeFile(filePath, serializeTodo(todo), "utf8");
+	await fs.writeFile(filePath, serializeTodo(todo), { encoding: "utf8", mode: 0o600 });
 }
 
 async function generateTodoId(todosDir: string): Promise<string> {
@@ -962,7 +962,7 @@ async function acquireLock(
 				session,
 				created_at: new Date(now).toISOString(),
 			};
-			await handle.writeFile(JSON.stringify(info, null, 2), "utf8");
+			await handle.writeFile(JSON.stringify(info, null, 2), { encoding: "utf8", mode: 0o600 });
 			await handle.close();
 			return async () => {
 				try {
