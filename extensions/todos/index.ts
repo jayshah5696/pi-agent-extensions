@@ -955,7 +955,7 @@ async function acquireLock(
 
 	for (let attempt = 0; attempt < 2; attempt += 1) {
 		try {
-			const handle = await fs.open(lockPath, "wx");
+			const handle = await fs.open(lockPath, "wx", 0o600);
 			const info: LockInfo = {
 				id,
 				pid: process.pid,
