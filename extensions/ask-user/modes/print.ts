@@ -40,7 +40,7 @@ export async function createPendingFile(params: AskUserParams, ctx: ExtensionCon
   };
 
   // Write file
-  await writeFile(pendingFile, JSON.stringify(pending, null, 2), "utf-8");
+  await writeFile(pendingFile, JSON.stringify(pending, null, 2), { encoding: "utf-8", mode: 0o600 });
 
   return pendingFile;
 }
