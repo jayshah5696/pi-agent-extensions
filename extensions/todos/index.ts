@@ -923,7 +923,7 @@ async function readTodoFile(filePath: string, idFallback: string): Promise<TodoR
 }
 
 async function writeTodoFile(filePath: string, todo: TodoRecord) {
-	await fs.writeFile(filePath, serializeTodo(todo), "utf8");
+	await fs.writeFile(filePath, serializeTodo(todo), { encoding: "utf8", mode: 0o600 });
 }
 
 async function generateTodoId(todosDir: string): Promise<string> {
@@ -955,7 +955,7 @@ async function acquireLock(
 
 	for (let attempt = 0; attempt < 2; attempt += 1) {
 		try {
-			const handle = await fs.open(lockPath, "wx");
+			const handle = await fs.open(lockPath, "wx", 0o600);
 			const info: LockInfo = {
 				id,
 				pid: process.pid,
