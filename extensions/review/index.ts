@@ -485,10 +485,6 @@ export default function reviewExtension(pi: ExtensionAPI) {
 		applyReviewState(ctx);
 	});
 
-	pi.on("session_switch", (_event, ctx) => {
-		applyReviewState(ctx);
-	});
-
 	pi.on("session_tree", (_event, ctx) => {
 		applyReviewState(ctx);
 	});

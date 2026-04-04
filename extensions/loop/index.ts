@@ -8,10 +8,11 @@
 
 import { Type } from "@sinclair/typebox";
 import { complete, type Api, type Model, type UserMessage } from "@mariozechner/pi-ai";
-import type { ExtensionAPI, ExtensionContext, SessionSwitchEvent } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { compact } from "@mariozechner/pi-coding-agent";
 import { Container, type SelectItem, SelectList, Text } from "@mariozechner/pi-tui";
 import { DynamicBorder } from "@mariozechner/pi-coding-agent";
+import { getRequestAuth, hasRequestAuth } from "../shared/auth.js";
 
 type LoopMode = "tests" | "custom" | "self";
 
@@ -87,22 +88,22 @@ function getConditionText(mode: LoopMode, condition?: string): string {
 
 async function selectSummaryModel(
 	ctx: ExtensionContext,
-): Promise<{ model: Model<Api>; apiKey: string } | null> {
+): Promise<{ model: Model<Api>; requestAuth: { apiKey?: string; headers?: Record<string, string> } } | null> {
 	if (!ctx.model) return null;
 
 	if (ctx.model.provider === "anthropic") {
 		const haikuModel = ctx.modelRegistry.find("anthropic", HAIKU_MODEL_ID);
-		if (haikuModel) {
-			const apiKey = await ctx.modelRegistry.getApiKey(haikuModel);
-			if (apiKey) {
-				return { model: haikuModel, apiKey };
+		if (haikuModel && (await hasRequestAuth(ctx.modelRegistry, haikuModel))) {
+			const requestAuth = await getRequestAuth(ctx.modelRegistry, haikuModel);
+			if (requestAuth) {
+				return { model: haikuModel, requestAuth };
 			}
 		}
 	}
 
-	const apiKey = await ctx.modelRegistry.getApiKey(ctx.model);
-	if (!apiKey) return null;
-	return { model: ctx.model, apiKey };
+	const requestAuth = await getRequestAuth(ctx.modelRegistry, ctx.model);
+	if (!requestAuth) return null;
+	return { model: ctx.model, requestAuth };
 }
 
 async function summarizeBreakoutCondition(
@@ -124,7 +125,7 @@ async function summarizeBreakoutCondition(
 	const response = await complete(
 		selection.model,
 		{ systemPrompt: SUMMARY_SYSTEM_PROMPT, messages: [userMessage] },
-		{ apiKey: selection.apiKey },
+		selection.requestAuth,
 	);
 
 	if (response.stopReason === "aborted" || response.stopReason === "error") {
@@ -400,15 +401,22 @@ export default function loopExtension(pi: ExtensionAPI): void {
 
 	pi.on("session_before_compact", async (event, ctx) => {
 		if (!loopState.active || !loopState.mode || !ctx.model) return;
-		const apiKey = await ctx.modelRegistry.getApiKey(ctx.model);
-		if (!apiKey) return;
+		const requestAuth = await getRequestAuth(ctx.modelRegistry, ctx.model);
+		if (!requestAuth) return;
 
 		const instructionParts = [event.customInstructions, getCompactionInstructions(loopState.mode, loopState.condition)]
 			.filter(Boolean)
 			.join("\n\n");
 
 		try {
-			const compaction = await compact(event.preparation, ctx.model, apiKey, instructionParts, event.signal);
+			const compaction = await compact(
+				event.preparation,
+				ctx.model,
+				requestAuth.apiKey ?? "",
+				requestAuth.headers,
+				instructionParts,
+				event.signal,
+			);
 			return { compaction };
 		} catch (error) {
 			if (ctx.hasUI) {
@@ -437,10 +445,6 @@ export default function loopExtension(pi: ExtensionAPI): void {
 	}
 
 	pi.on("session_start", async (_event, ctx) => {
-		await restoreLoopState(ctx);
-	});
-
-	pi.on("session_switch", async (_event: SessionSwitchEvent, ctx) => {
 		await restoreLoopState(ctx);
 	});
 }

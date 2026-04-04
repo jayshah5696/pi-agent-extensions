@@ -12,6 +12,7 @@
 
 import { complete, type Model, type Api, type UserMessage } from "@mariozechner/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import { getRequestAuth, hasRequestAuth } from "../shared/auth.js";
 import { BorderedLoader } from "@mariozechner/pi-coding-agent";
 import {
 	type Component,
@@ -77,15 +78,17 @@ async function selectExtractionModel(
 	currentModel: Model<Api>,
 	modelRegistry: {
 		find: (provider: string, modelId: string) => Model<Api> | undefined;
-		getApiKey: (model: Model<Api>) => Promise<string | undefined>;
+		getApiKeyAndHeaders: (
+			model: Model<Api>,
+		) => Promise<
+			| { ok: true; apiKey?: string; headers?: Record<string, string> }
+			| { ok: false; error: string }
+		>;
 	},
 ): Promise<Model<Api>> {
 	const codexModel = modelRegistry.find("openai-codex", CODEX_MODEL_ID);
-	if (codexModel) {
-		const apiKey = await modelRegistry.getApiKey(codexModel);
-		if (apiKey) {
-			return codexModel;
-		}
+	if (codexModel && (await hasRequestAuth(modelRegistry, codexModel))) {
+		return codexModel;
 	}
 
 	const haikuModel = modelRegistry.find("anthropic", HAIKU_MODEL_ID);
@@ -93,8 +96,7 @@ async function selectExtractionModel(
 		return currentModel;
 	}
 
-	const apiKey = await modelRegistry.getApiKey(haikuModel);
-	if (!apiKey) {
+	if (!(await hasRequestAuth(modelRegistry, haikuModel))) {
 		return currentModel;
 	}
 
@@ -457,7 +459,7 @@ export default function (pi: ExtensionAPI) {
 				loader.onAbort = () => done(null);
 
 				const doExtract = async () => {
-					const apiKey = await ctx.modelRegistry.getApiKey(extractionModel);
+					const requestAuth = await getRequestAuth(ctx.modelRegistry, extractionModel);
 					const userMessage: UserMessage = {
 						role: "user",
 						content: [{ type: "text", text: lastAssistantText! }],
@@ -467,7 +469,7 @@ export default function (pi: ExtensionAPI) {
 					const response = await complete(
 						extractionModel,
 						{ systemPrompt: SYSTEM_PROMPT, messages: [userMessage] },
-						{ apiKey, signal: loader.signal },
+						{ ...requestAuth, signal: loader.signal },
 					);
 
 					if (response.stopReason === "aborted") {

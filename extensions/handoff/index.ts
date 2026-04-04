@@ -22,6 +22,7 @@ import {
   serializeConversation,
 } from "@mariozechner/pi-coding-agent";
 
+import { getRequestAuthOrThrow } from "../shared/auth.js";
 import { loadConfig, validateGoal } from "./config.js";
 import { ProgressLoader, EXTRACTION_PHASES } from "./progress.js";
 import {
@@ -290,7 +291,7 @@ async function doExtraction(
   model: Model<any>,
   signal?: AbortSignal,
 ): Promise<ExtractionResult> {
-  const apiKey = await ctx.modelRegistry.getApiKey(model);
+  const requestAuth = await getRequestAuthOrThrow(ctx.modelRegistry, model);
 
   // Build user message
   const userMessage: Message = {
@@ -305,7 +306,7 @@ async function doExtraction(
   const response = await complete(
     model,
     { systemPrompt: EXTRACTION_SYSTEM_PROMPT, messages: [userMessage] },
-    { apiKey, signal },
+    { ...requestAuth, signal },
   );
 
   if (response.stopReason === "aborted") {
@@ -347,7 +348,7 @@ async function doExtraction(
       systemPrompt: EXTRACTION_SYSTEM_PROMPT,
       messages: [userMessage, assistantMessage, retryMessage],
     },
-    { apiKey, signal },
+    { ...requestAuth, signal },
   );
 
   if (retryResponse.stopReason === "aborted") {
@@ -383,7 +384,7 @@ async function doExtractionWithPhases(
   signal: AbortSignal,
   onPhase: (phase: string) => void,
 ): Promise<ExtractionResult> {
-  const apiKey = await ctx.modelRegistry.getApiKey(model);
+  const requestAuth = await getRequestAuthOrThrow(ctx.modelRegistry, model);
 
   // Phase 1: Analyzing conversation
   onPhase(EXTRACTION_PHASES[0]);
@@ -404,7 +405,7 @@ async function doExtractionWithPhases(
   const response = await complete(
     model,
     { systemPrompt: EXTRACTION_SYSTEM_PROMPT, messages: [userMessage] },
-    { apiKey, signal },
+    { ...requestAuth, signal },
   );
 
   if (response.stopReason === "aborted") {
@@ -451,7 +452,7 @@ async function doExtractionWithPhases(
       systemPrompt: EXTRACTION_SYSTEM_PROMPT,
       messages: [userMessage, assistantMessage, retryMessage],
     },
-    { apiKey, signal },
+    { ...requestAuth, signal },
   );
 
   if (retryResponse.stopReason === "aborted") {

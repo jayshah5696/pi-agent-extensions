@@ -38,6 +38,7 @@
 import type { ExtensionAPI, ExtensionContext, TurnEndEvent, MessageRenderer } from "@mariozechner/pi-coding-agent";
 import { getMarkdownTheme } from "@mariozechner/pi-coding-agent";
 import { complete, type Model, type Api, type UserMessage, type TextContent } from "@mariozechner/pi-ai";
+import { getRequestAuth, hasRequestAuth } from "../shared/auth.js";
 import { StringEnum } from "@mariozechner/pi-ai";
 import { Box, Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
@@ -156,20 +157,19 @@ async function selectSummarizationModel(
 	currentModel: Model<Api> | undefined,
 	modelRegistry: {
 		find: (provider: string, modelId: string) => Model<Api> | undefined;
-		getApiKey: (model: Model<Api>) => Promise<string | undefined>;
+		getApiKeyAndHeaders: (
+			model: Model<Api>,
+		) => Promise<
+			| { ok: true; apiKey?: string; headers?: Record<string, string> }
+			| { ok: false; error: string }
+		>;
 	},
 ): Promise<Model<Api> | undefined> {
 	const codexModel = modelRegistry.find("openai-codex", CODEX_MODEL_ID);
-	if (codexModel) {
-		const apiKey = await modelRegistry.getApiKey(codexModel);
-		if (apiKey) return codexModel;
-	}
+	if (codexModel && (await hasRequestAuth(modelRegistry, codexModel))) return codexModel;
 
 	const haikuModel = modelRegistry.find("anthropic", HAIKU_MODEL_ID);
-	if (haikuModel) {
-		const apiKey = await modelRegistry.getApiKey(haikuModel);
-		if (apiKey) return haikuModel;
-	}
+	if (haikuModel && (await hasRequestAuth(modelRegistry, haikuModel))) return haikuModel;
 
 	return currentModel;
 }
@@ -646,9 +646,9 @@ async function handleCommand(
 			return;
 		}
 
-		const apiKey = await ctx.modelRegistry.getApiKey(model);
-		if (!apiKey) {
-			respond(false, "get_summary", undefined, "No API key available for summarization model");
+		const requestAuth = await getRequestAuth(ctx.modelRegistry, model);
+		if (!requestAuth) {
+			respond(false, "get_summary", undefined, "No auth available for summarization model");
 			return;
 		}
 
@@ -666,7 +666,7 @@ async function handleCommand(
 			const response = await complete(
 				model,
 				{ systemPrompt: SUMMARIZATION_SYSTEM_PROMPT, messages: [userMessage] },
-				{ apiKey },
+				requestAuth,
 			);
 
 			if (response.stopReason === "aborted" || response.stopReason === "error") {
@@ -1002,10 +1002,6 @@ export default function (pi: ExtensionAPI) {
 	};
 
 	pi.on("session_start", async (_event, ctx) => {
-		await refreshServer(ctx);
-	});
-
-	pi.on("session_switch", async (_event, ctx) => {
 		await refreshServer(ctx);
 	});
 
