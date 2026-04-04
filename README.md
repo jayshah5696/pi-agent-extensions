@@ -98,6 +98,10 @@ pi
 
 You'll see a loader while context is extracted, then an editor to review the handoff prompt.
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.
+
 ## Update
 
 ```bash
