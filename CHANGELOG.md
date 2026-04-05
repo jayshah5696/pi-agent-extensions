@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.4] - 2026-04-05
+
+### Fixed
+- Migrated `todos` and `files` extensions from removed `getEditorKeybindings()` / `EditorKeybindingsManager` to `getKeybindings()` / `KeybindingsManager` (pi-tui 0.65.0).
+- Updated all legacy keybinding names to namespaced IDs (`selectUp` → `tui.select.up`, `expandTools` → `app.tools.expand`, etc.).
+- Fixed `keyHint()` calls in `todos` and `sessions` to use namespaced keybinding IDs.
+- Fixed stale `session_switch` reference in `docs/mitsuhiko-integration-analysis.md`.
+
 ## [0.3.3] - 2026-04-04
 
 ### Fixed

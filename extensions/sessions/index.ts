@@ -67,7 +67,7 @@ async function listSessions(ctx: ExtensionCommandContext): Promise<SessionInfoLi
     container.addChild(new DynamicBorder(borderColor));
     container.addChild(loader);
     container.addChild(new Spacer(1));
-    container.addChild(new Text(keyHint("selectCancel", "cancel"), 1, 0));
+    container.addChild(new Text(keyHint("tui.select.cancel", "cancel"), 1, 0));
     container.addChild(new Spacer(1));
     container.addChild(new DynamicBorder(borderColor));
 

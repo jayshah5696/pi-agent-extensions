@@ -458,8 +458,8 @@ pi.on("tool_result", (event, ctx) => {
 ```typescript
 // Store extension state in session
 pi.appendEntry<StateType>(CUSTOM_TYPE, stateData);
-// Restore on session switch
-pi.on("session_switch", (event, ctx) => {
+// Restore on session start (covers startup, switch, fork, etc.)
+pi.on("session_start", (event, ctx) => {
   applyState(ctx);
 });
 ```
