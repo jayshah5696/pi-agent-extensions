@@ -17,7 +17,7 @@
  * - Zero context cost — no tokens wasted on history
  */
 
-import { complete, type Model, type Api, type UserMessage } from "@mariozechner/pi-ai";
+import { complete, type UserMessage } from "@mariozechner/pi-ai";
 import type {
   ExtensionAPI,
   ExtensionCommandContext,
@@ -38,7 +38,7 @@ import {
   type TUI,
 } from "@mariozechner/pi-tui";
 
-import { getRequestAuth, hasRequestAuth } from "../shared/auth.js";
+import { getRequestAuth } from "../shared/auth.js";
 import {
   BTW_SYSTEM_PROMPT,
   buildBtwUserMessage,
@@ -46,40 +46,6 @@ import {
   extractResponseText,
 } from "./btw.js";
 
-const HAIKU_MODEL_ID = "claude-haiku-4-5";
-const CODEX_MODEL_ID = "gpt-5.1-codex-mini";
-
-/**
- * Select a cheap/fast model for BTW side questions.
- * Prefers Codex mini → Haiku → current model.
- */
-async function selectBtwModel(
-  currentModel: Model<Api>,
-  modelRegistry: {
-    find: (provider: string, modelId: string) => Model<Api> | undefined;
-    getApiKeyAndHeaders: (
-      model: Model<Api>,
-    ) => Promise<
-      | { ok: true; apiKey?: string; headers?: Record<string, string> }
-      | { ok: false; error: string }
-    >;
-  },
-): Promise<Model<Api>> {
-  // Try Codex mini first (cheapest)
-  const codexModel = modelRegistry.find("openai-codex", CODEX_MODEL_ID);
-  if (codexModel && (await hasRequestAuth(modelRegistry, codexModel))) {
-    return codexModel;
-  }
-
-  // Try Haiku (fast & cheap)
-  const haikuModel = modelRegistry.find("anthropic", HAIKU_MODEL_ID);
-  if (haikuModel && (await hasRequestAuth(modelRegistry, haikuModel))) {
-    return haikuModel;
-  }
-
-  // Fallback to current model
-  return currentModel;
-}
 
 /**
  * Overlay component that displays the BTW answer.
@@ -299,8 +265,8 @@ async function runBtwCommand(
     conversationText = serializeConversation(llmMessages);
   }
 
-  // Select model (prefer cheap models)
-  const btwModel = await selectBtwModel(ctx.model, ctx.modelRegistry);
+  // Use the currently selected model
+  const btwModel = ctx.model;
 
   // Build LLM messages
   const userMessage: UserMessage = {

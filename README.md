@@ -290,7 +290,7 @@ Ask quick "by the way" side questions without polluting your conversation histor
 - ✅ Ephemeral overlay — nothing enters session history
 - ✅ Zero context cost — no tokens wasted
 - ✅ Scrollable answer (↑↓/j/k, PgUp/PgDn)
-- ✅ Prefers cheap/fast models (Codex mini → Haiku → current)
+- ✅ Uses your currently selected model
 - ✅ Non-UI fallback (prints to stdout)
 
 **When to use `/btw` vs normal prompts:**

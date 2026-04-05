@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.6] - 2026-04-05
+
+### Changed
+- **`/btw`**: Uses the currently selected model instead of auto-selecting cheap models. Simpler, more predictable.
+
 ## [0.3.5] - 2026-04-05
 
 ### Added
@@ -10,7 +15,7 @@ All notable changes to this project will be documented in this file.
   - Full conversation context visibility but no tool access (lightweight, read-only).
   - Scrollable answer overlay with keyboard navigation (↑↓/j/k, PgUp/PgDn).
   - Dismiss with Esc, Space, or q.
-  - Prefers cheap/fast models (Codex mini → Haiku) to minimize cost.
+  - Uses the currently selected model (same quality as your session).
   - Non-UI fallback prints answer to stdout.
   - Zero context cost — no tokens wasted on history.
 
