@@ -189,11 +189,11 @@ function getSocketPath(sessionId: string): string {
 }
 
 function isSafeSessionId(sessionId: string): boolean {
-	return !sessionId.includes("/") && !sessionId.includes("\\") && !sessionId.includes("..") && sessionId.length > 0;
+	return /^[a-zA-Z0-9_\-]+$/.test(sessionId);
 }
 
 function isSafeAlias(alias: string): boolean {
-	return !alias.includes("/") && !alias.includes("\\") && !alias.includes("..") && alias.length > 0;
+	return /^[a-zA-Z0-9_\-\s]+$/.test(alias);
 }
 
 function getAliasPath(alias: string): string {
