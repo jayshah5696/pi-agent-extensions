@@ -32,6 +32,7 @@ Original repository: https://github.com/mitsuhiko/agent-stuff
 | **control** | RPC | Inter-session communication & control | ⚙️ Beta |
 | **answer** | Tool | Structured Q&A for complex queries | ⚙️ Beta |
 | **cwd_history** | Tracker | Tracks directory changes in context | ✅ Stable |
+| **btw** | Command | Quick side questions without history | ✅ Stable |
 | **nvidia-nim** | Command | Nvidia NIM auth & config | ✅ Stable |
 
 ## Install
@@ -270,6 +271,36 @@ A personality engine for Pi that makes waiting fun.
 - **Smart Exit:** `/exit` and `/bye` commands that ensure a clean terminal shutdown with a funny goodbye message.
 
 See [extensions/whimsical/README.md](extensions/whimsical/README.md) for details.
+
+### BTW
+
+Ask quick "by the way" side questions without polluting your conversation history. Inspired by Claude Code's `/btw` command.
+
+**Usage:**
+
+```bash
+/btw what's the syntax for useEffect cleanup?
+/btw which files did we modify just now?
+/btw why did you choose Zustand over Redux?
+```
+
+**Features:**
+- ✅ Full conversation context visibility
+- ✅ No tool access (lightweight, read-only)
+- ✅ Ephemeral overlay — nothing enters session history
+- ✅ Zero context cost — no tokens wasted
+- ✅ Scrollable answer (↑↓/j/k, PgUp/PgDn)
+- ✅ Prefers cheap/fast models (Codex mini → Haiku → current)
+- ✅ Non-UI fallback (prints to stdout)
+
+**When to use `/btw` vs normal prompts:**
+
+| Use `/btw` | Use normal prompts |
+|---|---|
+| Quick syntax checks | Requests needing tool access |
+| Confirming earlier decisions | Changes you want tracked |
+| Recalling context details | Complex multi-step tasks |
+| "One and done" lookups | Follow-up conversations |
 
 ### Productivity Tools
 

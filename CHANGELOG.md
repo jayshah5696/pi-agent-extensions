@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.5] - 2026-04-05
+
+### Added
+- **New extension: `/btw`** — Ask quick side questions without polluting conversation history.
+  - Ephemeral overlay: question and answer are never persisted to the session.
+  - Full conversation context visibility but no tool access (lightweight, read-only).
+  - Scrollable answer overlay with keyboard navigation (↑↓/j/k, PgUp/PgDn).
+  - Dismiss with Esc, Space, or q.
+  - Prefers cheap/fast models (Codex mini → Haiku) to minimize cost.
+  - Non-UI fallback prints answer to stdout.
+  - Zero context cost — no tokens wasted on history.
+
 ## [0.3.4] - 2026-04-05
 
 ### Fixed

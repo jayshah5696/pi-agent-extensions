@@ -1,6 +1,6 @@
 {
   "name": "pi-agent-extensions",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Collection of extensions for pi coding agent",
   "type": "module",
   "repository": {
@@ -46,7 +46,8 @@
       "./extensions/session-breakdown/index.ts",
       "./extensions/todos/index.ts",
       "./extensions/whimsical/index.ts",
-      "./extensions/nvidia-nim/index.ts"
+      "./extensions/nvidia-nim/index.ts",
+      "./extensions/btw/index.ts"
     ],
     "themes": [
       "./themes/nightowl.json",
