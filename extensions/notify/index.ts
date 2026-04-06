@@ -15,8 +15,12 @@ import { Markdown, type MarkdownTheme } from "@mariozechner/pi-tui";
  * Send a desktop notification via OSC 777 escape sequence.
  */
 const notify = (title: string, body: string): void => {
+	// Sanitize to prevent terminal escape sequence injection (remove control characters like ESC and BEL)
+	const safeTitle = title.replace(/[\x00-\x1f\x7f]/g, "");
+	const safeBody = body.replace(/[\x00-\x1f\x7f]/g, "");
+
 	// OSC 777 format: ESC ] 777 ; notify ; title ; body BEL
-	process.stdout.write(`\x1b]777;notify;${title};${body}\x07`);
+	process.stdout.write(`\x1b]777;notify;${safeTitle};${safeBody}\x07`);
 };
 
 const isTextPart = (part: unknown): part is { type: "text"; text: string } =>
