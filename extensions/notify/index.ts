@@ -16,7 +16,10 @@ import { Markdown, type MarkdownTheme } from "@mariozechner/pi-tui";
  */
 const notify = (title: string, body: string): void => {
 	// OSC 777 format: ESC ] 777 ; notify ; title ; body BEL
-	process.stdout.write(`\x1b]777;notify;${title};${body}\x07`);
+	// Sanitize to prevent terminal escape sequence injection
+	const sanitizedTitle = title.replace(/[\x00-\x1f\x7f]/g, "");
+	const sanitizedBody = body.replace(/[\x00-\x1f\x7f]/g, "");
+	process.stdout.write(`\x1b]777;notify;${sanitizedTitle};${sanitizedBody}\x07`);
 };
 
 const isTextPart = (part: unknown): part is { type: "text"; text: string } =>
