@@ -47,7 +47,8 @@
       "./extensions/todos/index.ts",
       "./extensions/whimsical/index.ts",
       "./extensions/nvidia-nim/index.ts",
-      "./extensions/btw/index.ts"
+      "./extensions/btw/index.ts",
+      "./extensions/powerline-footer/index.ts"
     ],
     "themes": [
       "./themes/nightowl.json",
