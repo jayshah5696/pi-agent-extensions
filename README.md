@@ -34,6 +34,8 @@ Original repository: https://github.com/mitsuhiko/agent-stuff
 | **cwd_history** | Tracker | Tracks directory changes in context | ✅ Stable |
 | **btw** | Command | Quick side questions without history | ✅ Stable |
 | **nvidia-nim** | Command | Nvidia NIM auth & config | ✅ Stable |
+| **powerline-footer** | UI | Custom powerline-style footer bar | ✅ Stable |
+| **session-breakdown** | Command | Session analytics dashboard | ✅ Stable |
 
 ## Install
 
@@ -337,6 +339,23 @@ Authenticate and configure Nvidia NIM as an LLM provider.
 - Saves provider config to `~/.pi/nvidia-nim.json`
 - Adds configured models to `~/.pi/agent/settings.json` `enabledModels` for scoped `/model` + Ctrl+P cycling
 - Model IDs must be `org/model` (exactly one `/`), e.g. `moonshotai/kimi-k2.5` (not `nvidia/moonshotai/kimi-k2.5`)
+
+**Powerline Footer**
+Custom powerline-style footer replacing the default pi footer with richer information.
+- Git branch + working tree status (staged/unstaged/untracked/ahead/behind)
+- Model name + context usage with color-coded percentage
+- Estimated session cost from model pricing
+- Session duration timer
+- Python virtualenv / conda environment detection
+- Extension statuses + session name
+- Auto-refreshes every 10 seconds via async git commands
+
+**Session Breakdown (`/session-breakdown`)**
+Interactive analytics dashboard for your pi sessions.
+- Analyzes all sessions in `~/.pi/agent/sessions/`
+- Shows sessions/day, messages/day, tokens/day, cost/day
+- Model breakdown with per-model usage stats
+- Filterable by 7/30/90 day windows
 
 ## Development
 
