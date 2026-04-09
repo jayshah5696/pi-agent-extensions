@@ -1,0 +1,20 @@
+{
+  "sessionId": "/Users/jshah/.pi/agent/sessions/--Users-jshah-Documents-GitHub-pi-agent-extensions--/2026-04-08T20-24-54-556Z_155c12e5-38c0-41ba-9ca4-0e951b3f2e34.jsonl",
+  "timestamp": "2026-04-08T20:25:03.571Z",
+  "questions": [
+    {
+      "question": "What would you like me to do with npm in this project?",
+      "answer": null,
+      "header": "Clarify npm task",
+      "options": [
+        "(Recommended) Run npm test",
+        "Run npm install",
+        "List available npm scripts",
+        "Other"
+      ]
+    }
+  ],
+  "metadata": {
+    "source": "clarify-npm-request"
+  }
+}

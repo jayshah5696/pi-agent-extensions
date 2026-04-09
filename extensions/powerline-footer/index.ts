@@ -139,7 +139,8 @@ class PowerlineFooter implements Component {
 				ctxColor = YELLOW;
 			}
 
-			contextInfo = `${ctxColor}${this.formatTokens(used)}/${this.formatTokens(total)} (${pct}%)${RESET}`;
+			const pctDisplay = pct % 1 === 0 ? pct.toFixed(0) : pct.toFixed(1);
+			contextInfo = `${ctxColor}${this.formatTokens(used)}/${this.formatTokens(total)} (${pctDisplay}%)${RESET}`;
 
 			// Cost estimation from model pricing
 			if (model?.cost && contextUsage.usageTokens > 0) {
@@ -150,8 +151,10 @@ class PowerlineFooter implements Component {
 					(inputTokens * model.cost.input) / 1_000_000 +
 					(outputTokens * model.cost.output) / 1_000_000;
 
-				if (cost > 0.001) {
+				if (cost >= 0.005) {
 					costInfo = ` ${DIM}|${RESET} ${PEACH}$${cost.toFixed(2)}${RESET}`;
+				} else if (cost > 0) {
+					costInfo = ` ${DIM}|${RESET} ${PEACH}<$0.01${RESET}`;
 				}
 			}
 		}

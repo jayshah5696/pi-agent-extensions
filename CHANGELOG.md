@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.1] - 2026-04-09
+
+### Fixed
+- **Powerline footer**: Context percentage now shows max 1 decimal (e.g. `8.1%` instead of `8.0832%`). Whole numbers show no decimal (`50%`).
+- **Powerline footer**: Cost always displays — shows `<$0.01` for tiny costs instead of hiding.
+
 ## [0.4.0] - 2026-04-08
 
 ### Added
