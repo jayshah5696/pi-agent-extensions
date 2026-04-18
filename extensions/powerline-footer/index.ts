@@ -1,5 +1,5 @@
 import type { ExtensionAPI, ExtensionContext, ContextUsage, ReadonlyFooterDataProvider } from "@mariozechner/pi-coding-agent";
-import { type Component, type Theme, type TUI, visibleWidth } from "@mariozechner/pi-tui";
+import { truncateToWidth, type Component, type Theme, type TUI } from "@mariozechner/pi-tui";
 import * as child_process from "child_process";
 
 class PowerlineFooter implements Component {
@@ -208,8 +208,9 @@ class PowerlineFooter implements Component {
 		}
 
 		const line = `${sessionInfo}${BOLD}${BLUE} ${shortDir}${RESET}${gitInfo} ${DIM}|${RESET} ${OVERLAY2}${modelShort}${RESET} ${contextInfo}${costInfo}${durationInfo}${envInfo}${statusInfo} ${DIM}${currentTime}${RESET}`;
+		const safeWidth = Math.max(0, width);
 
-		return [line];
+		return [truncateToWidth(line, safeWidth)];
 	}
 }
 
