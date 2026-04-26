@@ -42,9 +42,10 @@ describe("Whimsical Extension", () => {
     assert.ok(commands.has("bye"));
   });
 
-  it("registers turn_start and turn_end listeners", () => {
+  it("registers turn_start, turn_end, and session_shutdown listeners", () => {
     assert.ok(events.has("turn_start"));
     assert.ok(events.has("turn_end"));
+    assert.ok(events.has("session_shutdown"));
   });
 
   it("handles /exit command with graceful shutdown", async () => {
@@ -75,5 +76,24 @@ describe("Whimsical Extension", () => {
     assert.ok(notifyMessage.startsWith("👋 "), "Should show goodbye message");
     const allGoodbyeMessages = Object.values(GOODBYE_MESSAGES_BY_BUCKET).flat();
     assert.ok(allGoodbyeMessages.some(msg => notifyMessage.includes(msg)), "Should use a message from GOODBYE_MESSAGES_BY_BUCKET");
+  });
+
+  it("cleans up the working message on session shutdown", async () => {
+    const shutdownHandler = events.get("session_shutdown");
+    assert.ok(shutdownHandler);
+
+    let cleared = 0;
+    const mockCtx = {
+      hasUI: true,
+      ui: {
+        setWorkingMessage: (message?: string) => {
+          assert.equal(message, undefined);
+          cleared += 1;
+        },
+      },
+    };
+
+    await shutdownHandler?.({}, mockCtx);
+    assert.equal(cleared, 1);
   });
 });

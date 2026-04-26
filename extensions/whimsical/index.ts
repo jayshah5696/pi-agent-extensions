@@ -491,7 +491,7 @@ export default function whimsicalExtension(pi: ExtensionAPI) {
 
   pi.on("turn_start", async (_event, ctx) => {
     await ensureStateLoaded();
-    if (!state.enabled) return;
+    if (!state.enabled || !ctx.hasUI) return;
 
     stopActiveTicker();
 
@@ -515,6 +515,11 @@ export default function whimsicalExtension(pi: ExtensionAPI) {
         ctx.ui.setWorkingMessage(renderWorkingLine());
       }
     }, SPINNER_FRAME_INTERVAL_MS);
+  });
+
+  pi.on("session_shutdown", async (_event, ctx) => {
+    stopActiveTicker();
+    if (ctx.hasUI) ctx.ui.setWorkingMessage();
   });
 
   // Keep running until the next turn_start replaces cadence.

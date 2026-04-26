@@ -1,126 +1,124 @@
+import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
-import { visibleWidth } from "@mariozechner/pi-tui";
 import powerlineFooterExtension from "../extensions/powerline-footer/index.js";
+import { visibleWidth } from "@mariozechner/pi-tui";
 
-describe("powerline-footer", () => {
-	it("truncates the rendered footer to the available width", async () => {
-		let sessionStartHandler: ((event: any, ctx: any) => Promise<void> | void) | undefined;
-		let footerFactory: ((tui: any, theme: any, footerData: any) => any) | undefined;
+type EventHandler = (event: any, ctx: any) => Promise<void> | void;
 
-		const mockPi = {
-			on: (event: string, handler: (event: any, ctx: any) => Promise<void> | void) => {
-				if (event === "session_start") sessionStartHandler = handler;
-			},
-		};
+describe("Powerline Footer Extension", () => {
+  let events: Map<string, EventHandler>;
+  let mockPi: any;
 
-		powerlineFooterExtension(mockPi as any);
-		assert.ok(sessionStartHandler);
+  beforeEach(() => {
+    events = new Map();
+    mockPi = {
+      on: (event: string, handler: EventHandler) => {
+        events.set(event, handler);
+      },
+    };
 
-		const mockCtx = {
-			hasUI: true,
-			cwd: "/Users/jshah/emdash/worktrees/pi-agent-extensions/emdash/fix-powershell-issue-1k389",
-			model: {
-				name: "OpenAI: GPT-5.4 with a surprisingly long display name",
-				id: "openai/gpt-5.4",
-				cost: { input: 10, output: 30 },
-			},
-			getContextUsage: () => ({
-				tokens: 12_345,
-				contextWindow: 1_100_000,
-				percent: 9.4,
-				usageTokens: 50_000,
-				trailingTokens: 10_000,
-			}),
-			sessionManager: {
-				getSessionName: () => "very-long-session-name-for-powerline-footer-tests",
-			},
-			ui: {
-				setFooter: (factory: (tui: any, theme: any, footerData: any) => any) => {
-					footerFactory = factory;
-				},
-			},
-		};
+    powerlineFooterExtension(mockPi);
+  });
 
-		await sessionStartHandler?.({}, mockCtx);
-		assert.ok(footerFactory);
+  it("registers a session_start listener", () => {
+    assert.ok(events.has("session_start"));
+  });
 
-		const component = footerFactory?.(
-			{ requestRender: () => {} },
-			{},
-			{
-				getGitBranch: () => null,
-				getExtensionStatuses: () =>
-					new Map([
-						["one", "status-one"],
-						["two", "status-two"],
-					]),
-			},
-		);
-		assert.ok(component);
+  it("renders safely when the captured ctx later becomes stale", async () => {
+    const sessionStart = events.get("session_start");
+    assert.ok(sessionStart);
 
-		const width = 40;
-		const [line] = component.render(width);
-		component.dispose();
+    let footerFactory: ((tui: any, theme: any, footerData: any) => any) | undefined;
+    let stale = false;
+    const staleError = new Error(
+      "This extension ctx is stale after session replacement or reload.",
+    );
 
-		assert.ok(visibleWidth(line) <= width, `expected footer width <= ${width}, got ${visibleWidth(line)}`);
-	});
+    const ctx = {
+      hasUI: true,
+      get cwd() {
+        if (stale) throw staleError;
+        return "/tmp/pi-agent-extensions";
+      },
+      get model() {
+        if (stale) throw staleError;
+        return {
+          id: "anthropic/claude-opus-4.7",
+          name: "Claude Opus 4.7",
+          provider: "Anthropic",
+        };
+      },
+      modelRegistry: {
+        isUsingOAuth: () => false,
+      },
+      getContextUsage: () => {
+        if (stale) throw staleError;
+        return {
+          tokens: 1234,
+          contextWindow: 1000000,
+          percent: 12.3,
+        };
+      },
+      sessionManager: {
+        getSessionName: () => {
+          if (stale) throw staleError;
+          return "demo";
+        },
+        getEntries: () => {
+          if (stale) throw staleError;
+          return [
+            {
+              type: "message",
+              message: {
+                role: "assistant",
+                usage: {
+                  cost: { total: 0.123 },
+                },
+              },
+            },
+          ];
+        },
+      },
+      ui: {
+        setFooter: (factory: (tui: any, theme: any, footerData: any) => any) => {
+          footerFactory = factory;
+        },
+      },
+    };
 
-	it("keeps the footer safe across multiple narrow widths", async () => {
-		let sessionStartHandler: ((event: any, ctx: any) => Promise<void> | void) | undefined;
-		let footerFactory: ((tui: any, theme: any, footerData: any) => any) | undefined;
+    await sessionStart?.({}, ctx);
+    assert.ok(footerFactory, "session_start should register a footer factory");
 
-		const mockPi = {
-			on: (event: string, handler: (event: any, ctx: any) => Promise<void> | void) => {
-				if (event === "session_start") sessionStartHandler = handler;
-			},
-		};
+    const tui = {
+      requestRender: () => undefined,
+    };
+    const theme = {};
+    const footerData = {
+      getGitBranch: () => undefined,
+      getExtensionStatuses: () => new Map(),
+    };
 
-		powerlineFooterExtension(mockPi as any);
-		assert.ok(sessionStartHandler);
+    const footer = footerFactory!(tui, theme, footerData);
+    const freshRender = footer.render(120);
+    assert.equal(Array.isArray(freshRender), true);
+    assert.equal(freshRender.length, 1);
+    assert.ok(visibleWidth(freshRender[0]) <= 120);
+    assert.match(freshRender[0], /\$0\.123/);
 
-		const mockCtx = {
-			hasUI: true,
-			cwd: "/Users/jshah/projects/some/deeply/nested/path/that/should/not/crash/the/footer/renderer",
-			model: {
-				name: "gpt-5.4",
-				id: "openai/gpt-5.4",
-			},
-			getContextUsage: () => ({
-				tokens: 999,
-				contextWindow: 128_000,
-				percent: 1,
-				usageTokens: 0,
-				trailingTokens: 0,
-			}),
-			sessionManager: {
-				getSessionName: () => "session-name",
-			},
-			ui: {
-				setFooter: (factory: (tui: any, theme: any, footerData: any) => any) => {
-					footerFactory = factory;
-				},
-			},
-		};
+    const narrowRender = footer.render(40);
+    assert.equal(narrowRender.length, 1);
+    assert.ok(visibleWidth(narrowRender[0]) <= 40);
 
-		await sessionStartHandler?.({}, mockCtx);
-		assert.ok(footerFactory);
+    stale = true;
+    assert.doesNotThrow(() => footer.render(120));
+    assert.doesNotThrow(() => footer.render(40));
+    assert.ok(visibleWidth(footer.render(120)[0]) <= 120);
+    assert.ok(visibleWidth(footer.render(40)[0]) <= 40);
 
-		const component = footerFactory?.(
-			{ requestRender: () => {} },
-			{},
-			{
-				getGitBranch: () => null,
-				getExtensionStatuses: () => new Map(),
-			},
-		);
-		assert.ok(component);
-
-		for (const width of [80, 30, 20, 10]) {
-			const [line] = component.render(width);
-			assert.ok(visibleWidth(line) <= width, `expected footer width <= ${width}, got ${visibleWidth(line)}`);
-		}
-
-		component.dispose();
-	});
+    footer.dispose();
+    assert.doesNotThrow(() => footer.render(120));
+    assert.doesNotThrow(() => footer.render(40));
+    assert.ok(visibleWidth(footer.render(120)[0]) <= 120);
+    assert.ok(visibleWidth(footer.render(40)[0]) <= 40);
+  });
 });

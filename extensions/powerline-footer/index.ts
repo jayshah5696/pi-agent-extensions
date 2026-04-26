@@ -1,5 +1,5 @@
-import type { ExtensionAPI, ExtensionContext, ContextUsage, ReadonlyFooterDataProvider } from "@mariozechner/pi-coding-agent";
-import { truncateToWidth, type Component, type Theme, type TUI } from "@mariozechner/pi-tui";
+import type { ExtensionAPI, ExtensionContext, ReadonlyFooterDataProvider } from "@mariozechner/pi-coding-agent";
+import { type Component, type Theme, type TUI, truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import * as child_process from "child_process";
 
 class PowerlineFooter implements Component {
@@ -9,6 +9,14 @@ class PowerlineFooter implements Component {
 	private ctx: ExtensionContext;
 	private interval?: ReturnType<typeof setInterval>;
 	private sessionStartTime: number;
+	private disposed = false;
+	private cwd: string;
+	private lastRenderedLine = "";
+	private lastShortDir: string;
+	private lastModelShort = "unknown";
+	private lastContextInfo = "";
+	private lastCostInfo = "";
+	private lastSessionName = "";
 
 	// Cached git state (updated async every 10s)
 	private gitStatusExtras: string = "";
@@ -19,33 +27,40 @@ class PowerlineFooter implements Component {
 		this.footerData = footerData;
 		this.ctx = ctx;
 		this.sessionStartTime = Date.now();
+		this.cwd = ctx.cwd;
+		this.lastShortDir = this.formatShortDir(this.cwd);
 
 		this.fetchAsyncData();
 
 		this.interval = setInterval(() => {
+			if (this.disposed) return;
 			this.fetchAsyncData();
 			this.tui.requestRender();
 		}, 10000);
 	}
 
 	dispose() {
+		this.disposed = true;
 		if (this.interval) {
 			clearInterval(this.interval);
+			this.interval = undefined;
 		}
 	}
 
 	private fetchAsyncData() {
-		const cwd = this.ctx.cwd;
+		if (this.disposed) return;
+		const cwd = this.cwd;
 		const branch = this.footerData.getGitBranch();
 
 		if (branch) {
 			child_process.exec("git --no-optional-locks status --porcelain", { encoding: "utf8", cwd }, (err, stdout) => {
-				if (err) return;
+				if (this.disposed || err) return;
 				const staged = (stdout.match(/^[AMDRC]/gm) || []).length;
 				const unstaged = (stdout.match(/^.[MD]/gm) || []).length;
 				const untracked = (stdout.match(/^\?\?/gm) || []).length;
 
 				child_process.exec("git --no-optional-locks rev-list --count --left-right @{u}...HEAD", { encoding: "utf8", cwd }, (err2, revListOut) => {
+					if (this.disposed) return;
 					let ahead = 0;
 					let behind = 0;
 					if (!err2 && revListOut && revListOut.includes("\t")) {
@@ -72,6 +87,93 @@ class PowerlineFooter implements Component {
 	invalidate() {}
 	handleInput(_data: string) {}
 
+	private formatShortDir(cwd: string): string {
+		const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+		let shortDir = cwd;
+		if (homeDir && shortDir.startsWith(homeDir)) {
+			shortDir = "~" + shortDir.slice(homeDir.length);
+		}
+		const parts = shortDir.split("/");
+		if (parts.length > 4) {
+			shortDir = parts.slice(parts.length - 4).join("/");
+		}
+		return shortDir;
+	}
+
+	private getShortDir(): string {
+		try {
+			this.lastShortDir = this.formatShortDir(this.ctx.cwd);
+		} catch {}
+		return this.lastShortDir;
+	}
+
+	private getModelShort(): string {
+		try {
+			const model = this.ctx.model;
+			this.lastModelShort = model?.name || model?.id || "unknown";
+		} catch {}
+		return this.lastModelShort;
+	}
+
+	private getContextDetails(reset: string, green: string, yellow: string, red: string, peach: string, dim: string) {
+		try {
+			const model = this.ctx.model;
+			const contextUsage = this.ctx.getContextUsage();
+			let contextInfo = "";
+			let costInfo = "";
+
+			if (contextUsage) {
+				const used = contextUsage.tokens;
+				const total = contextUsage.contextWindow;
+				const pct = contextUsage.percent;
+				if (used !== null && pct !== null) {
+					const remaining = 100 - pct;
+
+					let ctxColor = green;
+					if (remaining < 20) {
+						ctxColor = red;
+					} else if (remaining < 50) {
+						ctxColor = yellow;
+					}
+
+					const pctDisplay = pct % 1 === 0 ? pct.toFixed(0) : pct.toFixed(1);
+					contextInfo = `${ctxColor}${this.formatTokens(used)}/${this.formatTokens(total)} (${pctDisplay}%)${reset}`;
+				} else {
+					contextInfo = `${green}?/${this.formatTokens(total)}${reset}`;
+				}
+			}
+
+			let totalCost = 0;
+			for (const entry of this.ctx.sessionManager.getEntries()) {
+				if (entry.type !== "message" || entry.message.role !== "assistant") continue;
+				totalCost += entry.message.usage?.cost?.total ?? 0;
+			}
+			const usingSubscription = model ? this.ctx.modelRegistry.isUsingOAuth(model) : false;
+			if (totalCost > 0 || usingSubscription) {
+				const formattedCost = `$${totalCost.toFixed(3)}${usingSubscription ? " (sub)" : ""}`;
+				costInfo = ` ${dim}|${reset} ${peach}${formattedCost}${reset}`;
+			}
+
+			this.lastContextInfo = contextInfo;
+			this.lastCostInfo = costInfo;
+		} catch {}
+
+		return { contextInfo: this.lastContextInfo, costInfo: this.lastCostInfo };
+	}
+
+	private getSessionName(): string {
+		try {
+			this.lastSessionName = this.ctx.sessionManager.getSessionName() ?? "";
+		} catch {}
+		return this.lastSessionName;
+	}
+
+	private fitToWidth(line: string, width: number): string {
+		if (width <= 0) return "";
+		if (visibleWidth(line) <= width) return line;
+		return truncateToWidth(line, width, "...");
+	}
+
 	private formatTokens(num: number): string {
 		if (num >= 1_000_000) {
 			return (num / 1_000_000).toFixed(1) + "M";
@@ -95,19 +197,11 @@ class PowerlineFooter implements Component {
 		const PEACH = "\x1b[38;5;216m";
 		const OVERLAY2 = "\x1b[38;5;103m";
 
-		// --- Directory ---
-		const cwd = this.ctx.cwd;
-		const homeDir = process.env.HOME || process.env.USERPROFILE || "";
-		let shortDir = cwd;
-		if (homeDir && shortDir.startsWith(homeDir)) {
-			shortDir = "~" + shortDir.slice(homeDir.length);
-		}
-		const parts = shortDir.split("/");
-		if (parts.length > 4) {
-			shortDir = parts.slice(parts.length - 4).join("/");
+		if (this.disposed) {
+			return [this.fitToWidth(this.lastRenderedLine || "", width)];
 		}
 
-		// --- Git ---
+		const shortDir = this.getShortDir();
 		let gitInfo = "";
 		const branch = this.footerData.getGitBranch();
 		if (branch) {
@@ -117,49 +211,9 @@ class PowerlineFooter implements Component {
 			}
 		}
 
-		// --- Model ---
-		const model = this.ctx.model;
-		const modelShort = model?.name || model?.id || "unknown";
+		const modelShort = this.getModelShort();
+		const { contextInfo, costInfo } = this.getContextDetails(RESET, GREEN, YELLOW, RED, PEACH, DIM);
 
-		// --- Context usage ---
-		const contextUsage = this.ctx.getContextUsage();
-		let contextInfo = "";
-		let costInfo = "";
-
-		if (contextUsage) {
-			const used = contextUsage.tokens;
-			const total = contextUsage.contextWindow;
-			const pct = contextUsage.percent;
-			const remaining = 100 - pct;
-
-			let ctxColor = GREEN;
-			if (remaining < 20) {
-				ctxColor = RED;
-			} else if (remaining < 50) {
-				ctxColor = YELLOW;
-			}
-
-			const pctDisplay = pct % 1 === 0 ? pct.toFixed(0) : pct.toFixed(1);
-			contextInfo = `${ctxColor}${this.formatTokens(used)}/${this.formatTokens(total)} (${pctDisplay}%)${RESET}`;
-
-			// Cost estimation from model pricing
-			if (model?.cost && contextUsage.usageTokens > 0) {
-				// Rough estimate: treat usageTokens as input, trailingTokens as recent output
-				const inputTokens = contextUsage.usageTokens;
-				const outputTokens = contextUsage.trailingTokens;
-				const cost =
-					(inputTokens * model.cost.input) / 1_000_000 +
-					(outputTokens * model.cost.output) / 1_000_000;
-
-				if (cost >= 0.005) {
-					costInfo = ` ${DIM}|${RESET} ${PEACH}$${cost.toFixed(2)}${RESET}`;
-				} else if (cost > 0) {
-					costInfo = ` ${DIM}|${RESET} ${PEACH}<$0.01${RESET}`;
-				}
-			}
-		}
-
-		// --- Session duration ---
 		let durationInfo = "";
 		const durationMs = Date.now() - this.sessionStartTime;
 		if (durationMs > 0) {
@@ -177,7 +231,6 @@ class PowerlineFooter implements Component {
 			durationInfo = ` ${DIM}|${RESET} ${OVERLAY2}${durFmt}${RESET}`;
 		}
 
-		// --- Python env ---
 		let envInfo = "";
 		if (process.env.CONDA_DEFAULT_ENV) {
 			envInfo = ` ${SKY}(${process.env.CONDA_DEFAULT_ENV})${RESET}`;
@@ -186,16 +239,31 @@ class PowerlineFooter implements Component {
 			envInfo = ` ${SKY}(${venvName})${RESET}`;
 		}
 
-		// --- Time ---
 		const date = new Date();
 		const currentTime = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-
-		// --- Session name ---
-		const sessionName = this.ctx.sessionManager.getSessionName();
+		const sessionName = this.getSessionName();
 		const sessionInfo = sessionName ? `${MAUVE}[${sessionName}]${RESET} ` : "";
 
-		// --- Extension statuses ---
-		let statusInfo = "";
+		const left = `${sessionInfo}${BOLD}${BLUE} ${shortDir}${RESET}${gitInfo}`;
+		const right = `${OVERLAY2}${modelShort}${RESET} ${contextInfo}${costInfo}${durationInfo}${envInfo} ${DIM}${currentTime}${RESET}`;
+		const leftWidth = visibleWidth(left);
+		const rightWidth = visibleWidth(right);
+		const minPadding = 1;
+		let line = "";
+
+		if (leftWidth + minPadding + rightWidth <= width) {
+			line = left + " ".repeat(width - leftWidth - rightWidth) + right;
+		} else {
+			const availableForLeft = Math.max(0, width - rightWidth - minPadding);
+			if (availableForLeft > 0) {
+				const truncatedLeft = this.fitToWidth(left, availableForLeft);
+				const truncatedLeftWidth = visibleWidth(truncatedLeft);
+				line = truncatedLeft + " ".repeat(Math.max(minPadding, width - truncatedLeftWidth - rightWidth)) + right;
+			} else {
+				line = this.fitToWidth(right, width);
+			}
+		}
+
 		const statuses = this.footerData.getExtensionStatuses();
 		if (statuses.size > 0) {
 			const parts: string[] = [];
@@ -203,14 +271,13 @@ class PowerlineFooter implements Component {
 				if (text) parts.push(text);
 			}
 			if (parts.length > 0) {
-				statusInfo = ` ${DIM}|${RESET} ${parts.join(" ")}`;
+				line = this.fitToWidth(`${line} ${DIM}|${RESET} ${parts.join(" ")}`, width);
 			}
 		}
 
-		const line = `${sessionInfo}${BOLD}${BLUE} ${shortDir}${RESET}${gitInfo} ${DIM}|${RESET} ${OVERLAY2}${modelShort}${RESET} ${contextInfo}${costInfo}${durationInfo}${envInfo}${statusInfo} ${DIM}${currentTime}${RESET}`;
-		const safeWidth = Math.max(0, width);
-
-		return [truncateToWidth(line, safeWidth)];
+		const fittedLine = this.fitToWidth(line, width);
+		this.lastRenderedLine = fittedLine;
+		return [fittedLine];
 	}
 }
 

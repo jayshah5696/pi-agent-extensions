@@ -29,10 +29,8 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import {
   type Component,
-  Container,
   Key,
   matchesKey,
-  Text,
   wrapTextWithAnsi,
   visibleWidth,
   type TUI,
@@ -48,8 +46,8 @@ import {
 
 
 /**
- * Overlay component that displays the BTW answer.
- * Supports scrolling for long answers.
+ * Overlay component that displays the BTW question and answer.
+ * The full page scrolls together so large input and output remain usable.
  */
 class BtwOverlay implements Component {
   private tui: TUI;
@@ -60,6 +58,7 @@ class BtwOverlay implements Component {
   private scrollOffset = 0;
   private cachedWidth?: number;
   private cachedLines?: string[];
+  private maxScrollOffset = 0;
 
   constructor(
     tui: TUI,
@@ -76,7 +75,6 @@ class BtwOverlay implements Component {
   }
 
   handleInput(data: string): void {
-    // Dismiss overlay
     if (
       matchesKey(data, Key.escape) ||
       matchesKey(data, Key.ctrl("c")) ||
@@ -87,7 +85,8 @@ class BtwOverlay implements Component {
       return;
     }
 
-    // Scroll
+    const pageStep = Math.max(4, (this.tui.height ?? 24) - 8);
+
     if (matchesKey(data, Key.up) || data === "k") {
       if (this.scrollOffset > 0) {
         this.scrollOffset--;
@@ -97,21 +96,21 @@ class BtwOverlay implements Component {
       return;
     }
     if (matchesKey(data, Key.down) || data === "j") {
-      this.scrollOffset++;
-      this.invalidate();
-      this.tui.requestRender();
+      if (this.scrollOffset < this.maxScrollOffset) {
+        this.scrollOffset++;
+        this.invalidate();
+        this.tui.requestRender();
+      }
       return;
     }
-
-    // Page up/down
     if (matchesKey(data, Key.pageUp)) {
-      this.scrollOffset = Math.max(0, this.scrollOffset - 10);
+      this.scrollOffset = Math.max(0, this.scrollOffset - pageStep);
       this.invalidate();
       this.tui.requestRender();
       return;
     }
     if (matchesKey(data, Key.pageDown)) {
-      this.scrollOffset += 10;
+      this.scrollOffset = Math.min(this.maxScrollOffset, this.scrollOffset + pageStep);
       this.invalidate();
       this.tui.requestRender();
       return;
@@ -129,13 +128,24 @@ class BtwOverlay implements Component {
     }
 
     const theme = this.theme;
-    const boxWidth = Math.min(width - 2, 120);
-    const contentWidth = boxWidth - 6; // padding on each side
+    const boxWidth = Math.min(width - 2, 144);
+    const contentWidth = Math.max(24, boxWidth - 8);
 
     const horizontalLine = (count: number) => "─".repeat(count);
+    const meter = (value: number, total: number, size: number) => {
+      if (total <= 0) return "░".repeat(size);
+      const filled = Math.max(1, Math.min(size, Math.round((value / total) * size)));
+      return "█".repeat(filled) + "░".repeat(Math.max(0, size - filled));
+    };
+
+    const fitInline = (text: string, targetWidth: number): string => {
+      if (targetWidth <= 0) return "";
+      const wrapped = wrapTextWithAnsi(text, targetWidth);
+      return wrapped[0] ?? "";
+    };
 
     const boxLine = (content: string, leftPad: number = 2): string => {
-      const paddedContent = " ".repeat(leftPad) + content;
+      const paddedContent = " ".repeat(leftPad) + fitInline(content, Math.max(0, boxWidth - leftPad - 3));
       const contentLen = visibleWidth(paddedContent);
       const rightPad = Math.max(0, boxWidth - contentLen - 2);
       return theme.fg("border", "│") + paddedContent + " ".repeat(rightPad) + theme.fg("border", "│");
@@ -150,73 +160,69 @@ class BtwOverlay implements Component {
       return line + " ".repeat(Math.max(0, width - len));
     };
 
-    const lines: string[] = [];
+    const sectionTitle = (label: string, meta: string) => {
+      const text = `${theme.fg("accent", theme.bold(label))}${theme.fg("muted", ` · ${meta}`)}`;
+      return boxLine(text, 2);
+    };
 
-    // Top border
-    lines.push(padToWidth(theme.fg("accent", "╭" + horizontalLine(boxWidth - 2) + "╮")));
-
-    // Title
-    const title = theme.fg("accent", theme.bold("btw"));
-    lines.push(padToWidth(boxLine(title)));
-
-    // Separator
-    lines.push(padToWidth(theme.fg("accent", "├" + horizontalLine(boxWidth - 2) + "┤")));
-
-    // Question
-    const questionLabel = theme.fg("muted", "Q: ") + theme.fg("text", this.question);
-    const wrappedQuestion = wrapTextWithAnsi(questionLabel, contentWidth);
-    for (const line of wrappedQuestion) {
-      lines.push(padToWidth(boxLine(line)));
-    }
-
-    lines.push(padToWidth(emptyBoxLine()));
-
-    // Separator between question and answer
-    lines.push(padToWidth(theme.fg("border", "├" + horizontalLine(boxWidth - 2) + "┤")));
-    lines.push(padToWidth(emptyBoxLine()));
-
-    // Answer — wrap and apply scroll
-    const answerLines: string[] = [];
-    for (const paragraph of this.answer.split("\n")) {
-      if (paragraph.trim() === "") {
-        answerLines.push("");
-      } else {
-        const wrapped = wrapTextWithAnsi(paragraph, contentWidth);
-        answerLines.push(...wrapped);
+    const pushWrappedSection = (
+      bodyLines: string[],
+      label: string,
+      meta: string,
+      text: string,
+      prefix: string,
+    ) => {
+      bodyLines.push(sectionTitle(label, meta));
+      bodyLines.push(emptyBoxLine());
+      for (const paragraph of text.split("\n")) {
+        if (paragraph.trim() === "") {
+          bodyLines.push(boxLine("", 2));
+          continue;
+        }
+        const wrapped = wrapTextWithAnsi(paragraph, Math.max(12, contentWidth - visibleWidth(prefix)));
+        for (const line of wrapped) {
+          bodyLines.push(boxLine(`${prefix}${line}`, 2));
+        }
       }
-    }
+    };
 
-    // Clamp scroll offset
+    const questionWords = this.question.trim().split(/\s+/).filter(Boolean).length;
+    const answerParagraphs = this.answer.split("\n").filter((line) => line.trim() !== "").length;
+
+    const bodyLines: string[] = [];
+    pushWrappedSection(bodyLines, "Question", `${questionWords} words`, this.question, theme.fg("muted", "› "));
+    bodyLines.push(emptyBoxLine());
+    bodyLines.push(boxLine(theme.fg("border", horizontalLine(Math.max(10, contentWidth - 6))), 3));
+    bodyLines.push(emptyBoxLine());
+    pushWrappedSection(bodyLines, "Answer", `${answerParagraphs} paragraphs`, this.answer, "");
+
     const termHeight = this.tui.height ?? 24;
-    const headerLines = lines.length;
-    const footerLines = 3; // separator + hint + bottom border
-    const maxVisibleAnswerLines = Math.max(1, termHeight - headerLines - footerLines - 2);
-
-    if (this.scrollOffset > Math.max(0, answerLines.length - maxVisibleAnswerLines)) {
-      this.scrollOffset = Math.max(0, answerLines.length - maxVisibleAnswerLines);
+    const fixedLines = 7;
+    const maxVisibleBodyLines = Math.max(4, termHeight - fixedLines);
+    this.maxScrollOffset = Math.max(0, bodyLines.length - maxVisibleBodyLines);
+    if (this.scrollOffset > this.maxScrollOffset) {
+      this.scrollOffset = this.maxScrollOffset;
     }
 
-    const visibleAnswerLines = answerLines.slice(
+    const visibleBodyLines = bodyLines.slice(
       this.scrollOffset,
-      this.scrollOffset + maxVisibleAnswerLines,
+      this.scrollOffset + maxVisibleBodyLines,
     );
 
-    for (const line of visibleAnswerLines) {
-      lines.push(padToWidth(boxLine(line)));
-    }
+    const scrollCurrent = Math.min(bodyLines.length, this.scrollOffset + maxVisibleBodyLines);
+    const scrollInfo = this.maxScrollOffset > 0
+      ? `${this.scrollOffset + 1}-${scrollCurrent}/${bodyLines.length}`
+      : "full";
+    const progress = meter(scrollCurrent, Math.max(bodyLines.length, 1), 10);
 
-    // Scroll indicator
-    if (answerLines.length > maxVisibleAnswerLines) {
-      const scrollInfo = theme.fg("dim", `[${this.scrollOffset + 1}-${Math.min(this.scrollOffset + maxVisibleAnswerLines, answerLines.length)}/${answerLines.length}]`);
-      lines.push(padToWidth(boxLine(scrollInfo)));
-    }
-
-    lines.push(padToWidth(emptyBoxLine()));
-
-    // Footer
+    const lines: string[] = [];
+    lines.push(padToWidth(theme.fg("accent", "╭" + horizontalLine(boxWidth - 2) + "╮")));
+    lines.push(padToWidth(boxLine(`${theme.fg("accent", theme.bold("BTW"))}${theme.fg("muted", " · side question")}`, 2)));
+    lines.push(padToWidth(boxLine(theme.fg("dim", "An editorial-style reading pane for long prompts and answers."), 2)));
     lines.push(padToWidth(theme.fg("accent", "├" + horizontalLine(boxWidth - 2) + "┤")));
-    const hint = theme.fg("dim", "Esc/Space/q to dismiss · ↑↓/j/k scroll · PgUp/PgDn");
-    lines.push(padToWidth(boxLine(hint)));
+    lines.push(...visibleBodyLines.map(padToWidth));
+    lines.push(padToWidth(theme.fg("accent", "├" + horizontalLine(boxWidth - 2) + "┤")));
+    lines.push(padToWidth(boxLine(`${theme.fg("accent", progress)} ${theme.fg("muted", scrollInfo)}${theme.fg("dim", "  ·  Esc dismiss  ·  ↑↓ / j k  ·  PgUp PgDn")}`, 2)));
     lines.push(padToWidth(theme.fg("accent", "╰" + horizontalLine(boxWidth - 2) + "╯")));
 
     this.cachedWidth = width;
@@ -348,6 +354,14 @@ async function runBtwCommand(
   // Step 2: Show the answer in an overlay
   await ctx.ui.custom<void>((tui, theme, _kb, done) => {
     return new BtwOverlay(tui, theme, question, answerResult, done);
+  }, {
+    overlay: true,
+    overlayOptions: {
+      anchor: "center",
+      width: "92%",
+      maxHeight: "92%",
+      margin: { top: 1, bottom: 1, left: 1, right: 1 },
+    },
   });
 
   // Nothing persisted — fully ephemeral
