@@ -196,19 +196,21 @@ async function runHandoffCommand(
     return;
   }
 
-  // Create new session with parent tracking
+  // Create new session with parent tracking.
+  // Any post-session-replacement work must happen inside withSession,
+  // using the fresh ctx passed by Pi.
   const newSessionResult = await ctx.newSession({
     parentSession: currentSessionFile,
+    withSession: async (newCtx) => {
+      newCtx.ui.setEditorText(editedPrompt);
+      newCtx.ui.notify("Handoff ready. Press Enter to send.", "info");
+    },
   });
 
   if (newSessionResult.cancelled) {
     ctx.ui.notify("New session cancelled", "info");
     return;
   }
-
-  // Set the edited prompt in the editor for submission
-  ctx.ui.setEditorText(editedPrompt);
-  ctx.ui.notify("Handoff ready. Press Enter to send.", "info");
 }
 
 /**

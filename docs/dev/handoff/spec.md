@@ -124,8 +124,8 @@ When goal is too short or vague (e.g., “continue”, “fix”):
    - Optionally prepend `/skill:<name>` if a skill was used last.
    - Optionally prepend a short handoff preamble to set expectations in the new thread.
 5. **Create new session**:
-   - `ctx.newSession({ parentSession: currentSessionFile })`
-   - `ctx.ui.setEditorText(compiledPrompt)`
+   - `ctx.newSession({ parentSession: currentSessionFile, withSession })`
+   - inside `withSession(newCtx)`, call `newCtx.ui.setEditorText(compiledPrompt)`
 
 ## Output Schema (LLM → Extension)
 ```json
@@ -441,8 +441,8 @@ The following decisions were made during implementation planning:
 - **Why**: Provides valuable context about the codebase state at handoff time
 
 #### Session Creation Flow
-- **Decision**: Use `ctx.newSession({ parentSession })` then `ctx.ui.setEditorText()`
-- **Why**: Creates proper session lineage tracking; setEditorText prefills the prompt for user to review and submit when ready
+- **Decision**: Use `ctx.newSession({ parentSession, withSession })` and perform editor setup inside `withSession(newCtx)`
+- **Why**: Creates proper session lineage tracking and avoids using a stale command context after session replacement; `newCtx.ui.setEditorText()` prefills the prompt for user review and submission
 
 #### Documentation
 - **Decision**: Create `docs/handoff.md` with usage and examples

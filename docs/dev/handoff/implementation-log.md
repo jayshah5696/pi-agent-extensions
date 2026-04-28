@@ -80,7 +80,7 @@ Implementing the `/handoff` command as specified in `docs/spec_handoff.md`. Foll
 | 3 | LLM extraction | Done | - | extraction.ts with retry logic |
 | 3 | Loader UI | Done | - | progress.ts with ProgressLoader + BorderedLoader fallback |
 | 4 | Editor review | Done | - | Using ctx.ui.editor() |
-| 4 | Session creation | Done | - | Using ctx.newSession() with parent tracking |
+| 4 | Session creation | Done | - | Using ctx.newSession() with parent tracking and withSession |
 | 5 | Non-UI mode | Done | - | Print to stdout |
 | 5 | Documentation | Done | - | docs/handoff.md |
 | 5 | Edge cases | Done | - | Error handling, model resolution |
