@@ -1,0 +1,38 @@
+┌─ Sessions ──────────────────────────────────────┬─ Preview ──────────────────────────────────────────────────────────────────────────────┐
+Filter: type to filter                            │ 019e7b86                                                                                
+→ 019e7b86                        2026-05-30 18   │ 2026-05-30 18:08 · 116 messages · /Users/jshah/Documents/GitHub/pi-agent-extensions     
+  019e7b4f                        2026-05-30 16   │ ────────────────────────────────────────────────────────────────────────────────────────
+  Database Performance Analysis   2026-05-30 16   │ … 36 earlier messages omitted                                                           
+  Calculator Implementation       2026-05-30 16   │                                                                                         
+  019dd24c                        2026-04-27 21   │ Assistant:                                                                              
+  019dd234                        2026-04-27 21   │   [tool call: bash]                                                                     
+  019dd24a                        2026-04-27 21   │                                                                                         
+  019dd233                        2026-04-27 20   │ Tool:bash:                                                                              
+  019dcb28                        2026-04-26 12   │   /opt/homebrew/bin/pi                                                                  
+  019dc7b8                        2026-04-25 20   │   /opt/homebrew/lib/node_modules                                                        
+  019dc7d6                        2026-04-25 20   │   /opt/homebrew/bin/pi                                                                  
+  019dc7d2                        2026-04-25 20   │   ok                                                                                    
+  7ba6ddfd                        2026-04-08 17   │                                                                                         
+  155c12e5                        2026-04-08 13   │ Assistant:                                                                              
+  1a2238de                        2026-04-04 20   │   [tool call: bash]                                                                     
+  20f1cc1b                        2026-04-04 19   │                                                                                         
+  071d2826                        2026-04-04 19   │ Tool:bash:                                                                              
+  3bf1bee1                        2026-04-04 15   │   @earendil-works/pi-coding-agent global present                                        
+  52ed32b0                        2026-03-09 21   │   @earendil-works/pi-tui global missing                                                 
+  51fec7be                        2026-02-14 18   │   pi - AI coding assistant with read, bash, edit, write tools                           
+  61fb9ff5                        2026-02-14 17   │   Usage:                                                                                
+  e9a9d3bf                        2026-02-14 16   │   pi [options] [@files...] [messages...]                                                
+                                                  │   Commands:                                                                             
+                                                  │   pi install <source> [-l] Install extension source and add to settings                 
+                                                  │   pi remove <source> [-l] Remove extension source from settings                         
+                                                  │   pi uninstall <source> [-l] Alias for remove                                           
+                                                  │   pi update [source|self|pi] Update pi and installed extensions                         
+                                                  │   pi list List installed extensions from settings                                       
+                                                  │   pi config Open TUI to enable/disable package resources                                
+                                                  │   pi <command> --help Show help for install/remove/uninstall/update/list                
+                                                  │   Options:                                                                              
+                                                  │   --provider <name> Provider name (default: google)                                     
+                                                  │   --model <pattern> Model pattern or ID (supports "provider/id" and optional            
+                                                  │ ":<thinking>")                                                                          
+                                                  │   --api-key <key> API key (defaults to env vars)                                        
+└─ ↑↓ list • type filter ─────────────────────────┴─ 1-36/2893 • pgup/pgdn scroll ─────────────────────────────────────────────────────────┘
