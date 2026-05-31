@@ -1,5 +1,5 @@
-import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
-import { DynamicBorder, SessionManager, keyHint } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import { DynamicBorder, SessionManager, keyHint } from "@earendil-works/pi-coding-agent";
 import {
   CancellableLoader,
   Container,
@@ -9,7 +9,9 @@ import {
   Spacer,
   Text,
   matchesKey,
-} from "@mariozechner/pi-tui";
+  truncateToWidth,
+  visibleWidth,
+} from "@earendil-works/pi-tui";
 import {
   buildSessionDescription,
   buildSessionLabel,
@@ -17,6 +19,7 @@ import {
   filterSessionEntries,
   parseLimit,
   type SessionInfoLike,
+  formatPreviewEntries,
 } from "./sessions.js";
 
 const DEFAULT_VISIBLE = 5;
@@ -104,6 +107,50 @@ async function listSessions(ctx: ExtensionCommandContext): Promise<SessionInfoLi
   return sessions;
 }
 
+const buildTopBorder = (leftWidth: number, rightWidth: number, theme: any): string => {
+  const leftPrefix = "┌─";
+  const leftTitle = " Sessions ";
+  const leftPad = leftWidth - leftPrefix.length - leftTitle.length;
+  const leftRaw = theme.fg("border", leftPrefix) + theme.fg("accent", theme.bold(leftTitle)) + theme.fg("border", "─".repeat(Math.max(0, leftPad)));
+  const leftPart = truncateToWidth(leftRaw, leftWidth, "", true);
+
+  const mid = theme.fg("border", "─┬─");
+
+  const rightPrefix = " Preview ";
+  const rightPad = rightWidth - rightPrefix.length - 2;
+  const rightRaw = theme.fg("accent", theme.bold(rightPrefix)) + theme.fg("border", "─".repeat(Math.max(0, rightPad))) + theme.fg("border", "─┐");
+  const rightPart = truncateToWidth(rightRaw, rightWidth, "", true);
+
+  return leftPart + mid + rightPart;
+};
+
+const buildBottomBorder = (leftWidth: number, rightWidth: number, theme: any): string => {
+  const leftPrefix = "└─";
+  const leftHelp = " ↑↓ list • pgup/pgdn scroll ";
+  const leftPad = leftWidth - leftPrefix.length - leftHelp.length;
+  const leftRaw = theme.fg("border", leftPrefix) + theme.fg("dim", leftHelp) + theme.fg("border", "─".repeat(Math.max(0, leftPad)));
+  const leftPart = truncateToWidth(leftRaw, leftWidth, "", true);
+
+  const mid = theme.fg("border", "─┴─");
+
+  const rightHelp = " esc cancel • enter open ";
+  const rightPad = rightWidth - rightHelp.length - 2;
+  const rightRaw = theme.fg("dim", rightHelp) + theme.fg("border", "─".repeat(Math.max(0, rightPad))) + theme.fg("border", "─┘");
+  const rightPart = truncateToWidth(rightRaw, rightWidth, "", true);
+
+  return leftPart + mid + rightPart;
+};
+
+const getPreviewLines = (sessionPath: string, rightWidth: number, theme: any): string[] => {
+  try {
+    const manager = SessionManager.open(sessionPath);
+    const branch = manager.getBranch();
+    return formatPreviewEntries(branch, rightWidth, theme);
+  } catch (error) {
+    return [theme.fg("warning", `Error loading session: ${error instanceof Error ? error.message : "Unknown error"}`)];
+  }
+};
+
 async function showSessionPicker(
   ctx: ExtensionCommandContext,
   sessions: SessionInfoLike[],
@@ -118,6 +165,20 @@ async function showSessionPicker(
     let selectList: SelectList;
     const container = new Container();
 
+    let activeItem: SelectItem | null = null;
+    let previewScrollOffset = 0;
+    const previewCache = new Map<string, string[]>();
+
+    const getCachedPreviewLines = (sessionPath: string, rightWidth: number): string[] => {
+      const cacheKey = `${sessionPath}:${rightWidth}`;
+      if (previewCache.has(cacheKey)) {
+        return previewCache.get(cacheKey)!;
+      }
+      const lines = getPreviewLines(sessionPath, rightWidth, theme);
+      previewCache.set(cacheKey, lines);
+      return lines;
+    };
+
     const buildItems = (current: typeof entries): SelectItem[] =>
       current.map((entry) => ({
         value: entry.session.path,
@@ -126,9 +187,19 @@ async function showSessionPicker(
       }));
 
     const rebuild = () => {
+      const termWidth = tui.terminal.columns || 80;
+      const termHeight = tui.terminal.rows || 24;
+
       const filtered = filterSessionEntries(entries, filter);
       const items = buildItems(filtered);
-      const visible = Math.max(1, Math.min(maxVisible, Math.max(items.length, 1)));
+
+      const viewHeight = Math.max(8, termHeight - 2);
+      let listHeight = maxVisible;
+      if (termWidth >= 70) {
+        listHeight = viewHeight - 2;
+      }
+
+      const visible = Math.max(1, Math.min(listHeight, Math.max(items.length, 1)));
 
       selectList = new SelectList(items, visible, {
         selectedPrefix: (text) => theme.fg("accent", text),
@@ -155,13 +226,63 @@ async function showSessionPicker(
       container.addChild(selectList);
       container.addChild(new Text(theme.fg("dim", "↑↓ navigate • enter open • esc cancel"), 1, 0));
       container.addChild(new DynamicBorder((text: string) => theme.fg("accent", text)));
+
+      const newActive = selectList.getSelectedItem();
+      if (newActive?.value !== activeItem?.value) {
+        activeItem = newActive;
+        previewScrollOffset = 0;
+      }
     };
 
     rebuild();
 
     return {
-      render: (width) => container.render(width),
+      render: (width) => {
+        if (width >= 70) {
+          const termHeight = tui.terminal.rows || 24;
+          const viewHeight = Math.max(8, termHeight - 2);
+
+          const leftWidth = Math.max(30, Math.min(45, Math.floor(width * 0.35)));
+          const divider = theme.fg("border", " │ ");
+          const rightWidth = width - leftWidth - 3;
+
+          const filterLine = filter.length
+            ? `${theme.fg("muted", "Filter: ")}${theme.fg("text", filter)}`
+            : `${theme.fg("muted", "Filter: ")}${theme.fg("dim", "type to filter")}`;
+
+          const leftLines: string[] = [];
+          leftLines.push(filterLine);
+          leftLines.push(...selectList.render(leftWidth));
+          while (leftLines.length < viewHeight) {
+            leftLines.push("");
+          }
+
+          const session = activeItem ? sessionByPath.get(activeItem.value) : null;
+          const rightLines = session
+            ? getCachedPreviewLines(session.path, rightWidth)
+            : [theme.fg("dim", "Select a session to preview.")];
+
+          const scrolledRightLines = rightLines.slice(previewScrollOffset, previewScrollOffset + viewHeight);
+          while (scrolledRightLines.length < viewHeight) {
+            scrolledRightLines.push("");
+          }
+
+          const combinedLines: string[] = [];
+          combinedLines.push(buildTopBorder(leftWidth, rightWidth, theme));
+          for (let i = 0; i < viewHeight; i++) {
+            const left = truncateToWidth(leftLines[i], leftWidth, "...", true);
+            const right = truncateToWidth(scrolledRightLines[i], rightWidth, "...", true);
+            combinedLines.push(left + divider + right);
+          }
+          combinedLines.push(buildBottomBorder(leftWidth, rightWidth, theme));
+
+          return combinedLines;
+        } else {
+          return container.render(width);
+        }
+      },
       invalidate: () => {
+        previewCache.clear();
         rebuild();
         container.invalidate();
       },
@@ -182,10 +303,57 @@ async function showSessionPicker(
           return;
         }
 
+        const termWidth = tui.terminal.columns || 80;
+        const termHeight = tui.terminal.rows || 24;
+        const viewHeight = Math.max(8, termHeight - 2);
+
+        if (termWidth >= 70) {
+          const leftWidth = Math.max(30, Math.min(45, Math.floor(termWidth * 0.35)));
+          const rightWidth = termWidth - leftWidth - 3;
+          const session = activeItem ? sessionByPath.get(activeItem.value) : null;
+          const previewLines = session ? getCachedPreviewLines(session.path, rightWidth) : [];
+
+          if (matchesKey(data, Key.pageDown) || matchesKey(data, Key.ctrl("d"))) {
+            const maxScroll = Math.max(0, previewLines.length - viewHeight);
+            previewScrollOffset = Math.min(maxScroll, previewScrollOffset + Math.max(1, viewHeight - 2));
+            tui.requestRender();
+            return;
+          }
+          if (matchesKey(data, Key.pageUp) || matchesKey(data, Key.ctrl("u"))) {
+            previewScrollOffset = Math.max(0, previewScrollOffset - Math.max(1, viewHeight - 2));
+            tui.requestRender();
+            return;
+          }
+          if (matchesKey(data, "shift+down") || matchesKey(data, Key.ctrl("j"))) {
+            const maxScroll = Math.max(0, previewLines.length - viewHeight);
+            previewScrollOffset = Math.min(maxScroll, previewScrollOffset + 1);
+            tui.requestRender();
+            return;
+          }
+          if (matchesKey(data, "shift+up") || matchesKey(data, Key.ctrl("k"))) {
+            previewScrollOffset = Math.max(0, previewScrollOffset - 1);
+            tui.requestRender();
+            return;
+          }
+        }
+
         selectList.handleInput(data);
+        const newActive = selectList.getSelectedItem();
+        if (newActive?.value !== activeItem?.value) {
+          activeItem = newActive;
+          previewScrollOffset = 0;
+        }
         tui.requestRender();
       },
     };
+  }, {
+    overlay: true,
+    overlayOptions: {
+      width: "100%",
+      maxHeight: "100%",
+      margin: 0,
+      anchor: "center",
+    },
   });
 }
 
