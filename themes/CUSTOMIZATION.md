@@ -287,7 +287,7 @@ Since you use "Default Dark+", consider these color mappings:
 ## 📦 Theme Locations
 
 ```
-/Users/jshah/Documents/GitHub/pi-sessions/themes/
+pi-agent-extensions/themes/
 ├── nightowl.json        # Original (mitsuhiko)
 ├── p10k-inspired.json   # YOUR COLORS ⭐
 ├── ghostty-dark.json    # Ghostty optimized
@@ -334,7 +334,7 @@ Start with **`p10k-inspired`** since it:
 
 Try it:
 ```bash
-cd /Users/jshah/Documents/GitHub/pi-sessions
+cd pi-agent-extensions
 pi --theme p10k-inspired
 /context
 ```

@@ -162,200 +162,44 @@ pi
 # Check: should show npm:pi-agent-extensions in [Extensions]
 ```
 
-## Extensions
+## Documentation & Extensions Reference
 
-### Sessions
+For in-depth explanations, options, and commands for all 16 extensions, refer to the [Extensions Reference](docs/extensions.md).
 
-Quick session picker for the pi coding agent. Provides a compact `/sessions` selector (default 5 visible rows) with arrow navigation, Enter to switch, and Esc to cancel.
-
-**Usage:**
-
-```bash
-/sessions       # Show last 5 sessions
-/sessions 10    # Show last 10 sessions
-```
-
-**Features:**
-- Lists sessions from the **current project** only
-- Displays absolute timestamps (`YYYY-MM-DD HH:mm`)
-- Filter by typing (prefix match on session name or cwd)
-- In non-UI mode (`pi -p` or JSON/RPC), sessions are printed to stdout
-
-See [docs/extensions/sessions.md](docs/extensions/sessions.md) for details.
-
-### Ask User
-
-The LLM can call the `ask_user` tool to gather user input with structured questions and options.
-
-**Status:** ⚙️ Beta (v0.1.0) - Core features working, enhanced UI coming soon
-
-**Example:**
-
-```typescript
-ask_user({
-  questions: [{
-    question: "Which database should we use?",
-    header: "Database Selection",
-    options: [
-      { label: "PostgreSQL (Recommended)", description: "Battle-tested relational DB" },
-      { label: "SQLite", description: "Lightweight, file-based" },
-      { label: "MongoDB", description: "Document store" }
-    ]
-  }]
-})
-```
-
-**Features:**
-- ✅ Text input questions
-- ✅ Option selection with descriptions
-- ✅ "Other" option always available
-- ✅ Print mode (pending file workflow)
-- ✅ Session persistence
-- ⏸️ Custom TUI components (using built-in helpers for now)
-- ⏸️ Tabbed multi-question UI (sequential currently)
-
-See [extensions/ask-user/README.md](extensions/ask-user/README.md) and [docs/extensions/ask-user.md](docs/extensions/ask-user.md) for details.
-
-### Handoff
-
-Transfer context to a new focused session. Unlike `/compact` which summarizes everything, `/handoff` extracts only what's relevant to your next goal.
-
-**Usage:**
-
-```bash
-/handoff <goal>
-```
-
-**Examples:**
-
-```bash
-/handoff implement team-level handoff with proper tests
-/handoff fix the authentication bug in login flow
-/handoff add unit tests for the parser module
-```
-
-**Features:**
-- Goal-driven context extraction (files, commands, decisions, open questions)
-- Structured JSON extraction with LLM
-- Skill inheritance (preserves last `/skill:` used)
-- Git metadata (branch, dirty state)
-- Session metadata (model, tools, thinking level)
-- Interactive editor to review/edit before creating new session
-- Configurable via `.pi/settings.json`
-
-**What gets extracted:**
-- Relevant files with reasons
-- Commands that were run
-- Key context and decisions
-- Open questions/risks
-
-See [docs/extensions/handoff.md](docs/extensions/handoff.md) for full documentation.
-
-### Whimsical
-
-A personality engine for Pi that makes waiting fun.
-
-**Usage:**
-
-```bash
-/whimsy         # Check status
-/whimsy chaos   # Enable chaos mode (Bollywood + Geek + Tips)
-/exit           # Graceful whimsical exit
-```
-
-**Features:**
-- **Context-Aware:** Messages change based on time of day (Morning/Night) and wait duration.
-- **Personality Modes:**
-  - `chaos`: The full experience (50% Bollywood, 30% Tips, 20% Geek).
-  - `bollywood`: 100% Bollywood dialogues & Hinglish memes.
-  - `geek`: Sci-Fi & Dev humor ("Reticulating splines...").
-- **Smart Exit:** `/exit` and `/bye` commands that ensure a clean terminal shutdown with a funny goodbye message.
-
-See [extensions/whimsical/README.md](extensions/whimsical/README.md) for details.
-
-### BTW
-
-Ask quick "by the way" side questions without polluting your conversation history. Inspired by Claude Code's `/btw` command.
-
-**Usage:**
-
-```bash
-/btw what's the syntax for useEffect cleanup?
-/btw which files did we modify just now?
-/btw why did you choose Zustand over Redux?
-```
-
-**Features:**
-- ✅ Full conversation context visibility
-- ✅ No tool access (lightweight, read-only)
-- ✅ Ephemeral overlay — nothing enters session history
-- ✅ Zero context cost — no tokens wasted
-- ✅ Scrollable answer (↑↓/j/k, PgUp/PgDn)
-- ✅ Uses your currently selected model
-- ✅ Non-UI fallback (prints to stdout)
-
-**When to use `/btw` vs normal prompts:**
-
-| Use `/btw` | Use normal prompts |
-|---|---|
-| Quick syntax checks | Requests needing tool access |
-| Confirming earlier decisions | Changes you want tracked |
-| Recalling context details | Complex multi-step tasks |
-| "One and done" lookups | Follow-up conversations |
-
-### Productivity Tools
-
-**Files (`/files`)**
-Unified file explorer with git integration. Adapted from `agent-stuff`.
-- `/files` - Open file browser
-- `Ctrl+Shift+F` - Open file picker
-
-**Todos (`/todos`)**
-File-based todo list management (stores in `.pi/todos/`).
-- `/todos` - List and manage todos
-- Tool: `todo` (create, update, claim, close tasks)
-
-**Notify**
-Allows the agent to send desktop notifications (via terminal OSC 777).
-- Tool: `notify`
-
-**Review**
-Interactive code review system. The agent can request a review, and you can approve/reject/comment on specific files.
-- Tool: `request_review`
-
-**Loop**
-Iterative execution loop for complex tasks.
-- Tool: `run_loop`
-
-**Control**
-RPC-based session control. Allows sessions to talk to each other (e.g., a "manager" session spawning and controlling "worker" sessions).
-- Flag: `--session-control`
-- Tool: `send_to_session`
-
-**Powerline Footer**
-Custom powerline-style footer replacing the default pi footer with richer information.
-- Git branch + working tree status (staged/unstaged/untracked/ahead/behind)
-- Model name + context usage with color-coded percentage
-- Estimated session cost from model pricing
-- Session duration timer
-- Python virtualenv / conda environment detection
-- Extension statuses + session name
-- Auto-refreshes every 10 seconds via async git commands
-
-**Session Breakdown (`/session-breakdown`)**
-Interactive analytics dashboard for your pi sessions.
-- Analyzes all sessions in `~/.pi/agent/sessions/`
-- Shows sessions/day, messages/day, tokens/day, cost/day
-- Model breakdown with per-model usage stats
-- Filterable by 7/30/90 day windows
+For installation, manual testing, and setup guides, see the [Documentation Index](docs/README.md).
 
 ## Development
 
+This repository uses [just](https://github.com/casey/just) as a command runner for local testing and package releases.
+
 ```bash
+# Install package dependencies
 npm install
+
+# Run the full test suite
+just test
+
+# Show local vs. published npm version
+just versions
+
+# Inspect package files packed in npm bundle
+just pack-dry-run
+
+# Check release validity (fails if version is not bumped)
+just release-check
+
+# Bump version, tag, commit, push, and publish to npm
+just release patch
+```
+
+If you do not have `just` installed, you can use the equivalent `npm` wrapper scripts:
+```bash
 npm test
+npm run release:check
+npm run release:publish -- patch
 ```
 
 ## License
 
 MIT
+

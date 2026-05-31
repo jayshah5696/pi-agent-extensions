@@ -1,32 +1,20 @@
 # Documentation
 
-## Extensions
+Welcome to the documentation for **pi-agent-extensions**.
 
-User-facing documentation for each extension:
+## Core Reference
 
-| Extension | Description |
-|-----------|-------------|
-| [sessions](extensions/sessions.md) | Quick session picker with `/sessions` command |
-| [ask-user](extensions/ask-user.md) | LLM tool for structured user questions |
-| [handoff](extensions/handoff.md) | Context transfer to new focused sessions |
+*   [Extensions Reference](extensions.md) — Comprehensive guide to all 16 active extensions (commands, tools, and features).
 
 ## Guides
 
-Setup and usage guides:
+Setup, release, and testing guides:
 
 | Guide | Description |
 |-------|-------------|
-| [Manual Testing](guides/manual-testing.md) | How to manually test the extensions |
-| [Vertex AI Setup](guides/vertex-ai-setup.md) | Using Pi with Google Cloud Vertex AI |
+| [Manual Testing](guides/manual-testing.md) | Comprehensive manual verification steps for extensions |
+| [Publishing & Task Runner](guides/publishing.md) | Standard NPM release flow and `just` commands |
+| [Vertex AI Setup](guides/vertex-ai-setup.md) | Setting up Google Cloud Vertex AI provider for Pi |
+| [Theme Customization](../themes/CUSTOMIZATION.md) | Creating and adjusting custom terminal color themes |
 
-## Development
 
-Internal documentation for contributors:
-
-### Handoff
-- [Specification](dev/handoff/spec.md) - Full design spec and rationale
-- [Implementation Log](dev/handoff/implementation-log.md) - Development history
-- [Eval Strategy](dev/handoff/eval-strategy.md) - Testing and evaluation approach
-
-### Ask User
-- [Test Cases](dev/ask-user/test-cases.md) - Comprehensive test coverage plan
