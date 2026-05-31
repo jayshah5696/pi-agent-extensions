@@ -1,0 +1,38 @@
+┌─ Sessions ──────────────────────────────────────┬─ Preview ──────────────────────────────────────────────────────────────────────────────┐
+Filter: type to filter                            │ 019e7b86
+→ 019e7b86                        2026-05-30 18   │ 2026-05-30 18:27 · 188 messages · /Users/jshah/Documents/GitHub/pi-agent-extensions
+  019e7b4f                        2026-05-30 16   │ ────────────────────────────────────────────────────────────────────────────────────────
+  Database Performance Analysis   2026-05-30 16   │ … 108 earlier messages omitted
+  Calculator Implementation       2026-05-30 16   │
+  019dd24c                        2026-04-27 21   │ ▸ Tool activity · 3 events · bash · 3 output lines (press t)
+  019dd234                        2026-04-27 21   │
+  019dd24a                        2026-04-27 21   │ ● Assistant
+  019dd233                        2026-04-27 20   │   Started final screenshot tmux session.
+  019dcb28                        2026-04-26 12   │
+  019dc7b8                        2026-04-25 20   │   Monitor:
+  019dc7d6                        2026-04-25 20   │   ```bash
+  019dc7d2                        2026-04-25 20   │   tmux -S
+  7ba6ddfd                        2026-04-08 17   │   "/var/folders/nv/30f4q12s3bz7r149xx20cvdr0000gn/T//claude-tmux-sockets/claude.sock"
+  155c12e5                        2026-04-08 13   │   attach -t pi-final-screenshot
+  1a2238de                        2026-04-04 20   │   ```
+  20f1cc1b                        2026-04-04 19   │
+  071d2826                        2026-04-04 19   │ ✖ Tool activity · 28 events · bash · 109 output lines (press t)
+  3bf1bee1                        2026-04-04 15   │
+  52ed32b0                        2026-03-09 21   │ ● Assistant
+  51fec7be                        2026-02-14 18   │   Done.
+  61fb9ff5                        2026-02-14 17   │
+  e9a9d3bf                        2026-02-14 16   │   Created new branch and PR:
+                                                  │
+                                                  │   **PR #38 — feat(sessions): full-window session preview picker**
+                                                  │   https://github.com/jayshah5696/pi-agent-extensions/pull/38
+                                                  │
+                                                  │   Closed superseded PRs:
+                                                  │
+                                                  │   - Closed #35
+                                                  │   - Closed #36
+                                                  │   - Closed #37
+                                                  │
+                                                  │   What’s in #38:
+                                                  │
+                                                  │   - Full-width/full-window `/sessions` overlay
+└─ ↑↓ list • type filter ─────────────────────────┴─ 1-36/420 • pgup/pgdn • t tools • h thinking ──────────────────────────────────────────┘

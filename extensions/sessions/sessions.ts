@@ -5,6 +5,50 @@ export interface SessionInfoLike {
   modified: Date;
   firstMessage: string;
   path: string;
+  messageCount?: number;
+}
+
+export type PreviewContent =
+  | string
+  | Array<
+      | { type: "text"; text: string }
+      | { type: "image"; mimeType?: string }
+      | { type: "toolCall"; name: string; arguments?: Record<string, unknown> }
+      | { type: "thinking"; thinking?: string; redacted?: boolean }
+    >;
+
+export interface PreviewMessageLike {
+  role: string;
+  content?: PreviewContent;
+  toolName?: string;
+  isError?: boolean;
+  command?: string;
+  output?: string;
+  summary?: string;
+}
+
+export type PreviewBlock =
+  | { kind: "notice"; text: string }
+  | { kind: "user"; text: string }
+  | { kind: "assistant"; text: string }
+  | { kind: "thinking"; text: string; redacted?: boolean }
+  | { kind: "toolCall"; name: string; args?: string }
+  | { kind: "toolResult"; name?: string; text: string; isError?: boolean }
+  | { kind: "bash"; command: string; output?: string; isError?: boolean }
+  | { kind: "summary"; label: string; text: string }
+  | { kind: "custom"; label: string; text: string };
+
+export interface SessionPreview {
+  title: string;
+  subtitle: string;
+  blocks: PreviewBlock[];
+  error?: string;
+}
+
+export interface SessionPaneLayout {
+  mode: "single" | "split";
+  listWidth: number;
+  previewWidth: number;
 }
 
 export function parseLimit(args: string | undefined, defaultLimit = 5): number {
@@ -71,4 +115,134 @@ export function filterSessionEntries(entries: SessionSearchEntry[], filter: stri
 
 export function filterSessionInfos(sessions: SessionInfoLike[], filter: string): SessionInfoLike[] {
   return filterSessionEntries(buildSessionSearchEntries(sessions), filter).map((entry) => entry.session);
+}
+
+export function getSessionPaneLayout(width: number): SessionPaneLayout {
+  if (width < 80) {
+    return { mode: "single", listWidth: width, previewWidth: 0 };
+  }
+
+  const dividerWidth = 3;
+  const available = Math.max(0, width - dividerWidth);
+  let listRatio = 0.36;
+  if (width < 110) {
+    listRatio = 0.42;
+  } else if (width >= 180) {
+    listRatio = 0.32;
+  }
+
+  const listWidth = Math.max(34, Math.min(58, Math.floor(available * listRatio)));
+  return {
+    mode: "split",
+    listWidth,
+    previewWidth: Math.max(0, available - listWidth),
+  };
+}
+
+const cleanPreviewText = (text: string): string => text.replace(/\s+$/g, "");
+
+function textBlocksFromContent(content: PreviewContent | undefined): PreviewBlock[] {
+  if (!content) return [];
+  if (typeof content === "string") return content.trim() ? [{ kind: "assistant", text: cleanPreviewText(content) }] : [];
+
+  const blocks: PreviewBlock[] = [];
+  for (const part of content) {
+    if (part.type === "text" && part.text.trim()) {
+      blocks.push({ kind: "assistant", text: cleanPreviewText(part.text) });
+    } else if (part.type === "image") {
+      blocks.push({ kind: "notice", text: `[image${part.mimeType ? `: ${part.mimeType}` : ""}]` });
+    } else if (part.type === "toolCall") {
+      const args = part.arguments && Object.keys(part.arguments).length > 0 ? JSON.stringify(part.arguments) : undefined;
+      blocks.push({ kind: "toolCall", name: part.name, args });
+    } else if (part.type === "thinking") {
+      blocks.push({
+        kind: "thinking",
+        text: part.redacted ? "[thinking redacted]" : cleanPreviewText(part.thinking ?? "[thinking]"),
+        redacted: part.redacted,
+      });
+    }
+  }
+  return blocks;
+}
+
+function contentToPlainText(content: PreviewContent | undefined): string {
+  if (!content) return "";
+  if (typeof content === "string") return content;
+  return content
+    .map((part) => {
+      if (part.type === "text") return part.text;
+      if (part.type === "image") return `[image${part.mimeType ? `: ${part.mimeType}` : ""}]`;
+      if (part.type === "toolCall") return `[tool call: ${part.name}]`;
+      if (part.type === "thinking") return part.redacted ? "[thinking redacted]" : (part.thinking ?? "[thinking]");
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function messageToBlocks(message: PreviewMessageLike): PreviewBlock[] {
+  if (message.role === "user") {
+    const text = cleanPreviewText(contentToPlainText(message.content));
+    return text ? [{ kind: "user", text }] : [];
+  }
+
+  if (message.role === "assistant") {
+    return textBlocksFromContent(message.content);
+  }
+
+  if (message.role === "toolResult" || message.role === "tool") {
+    const text = cleanPreviewText(contentToPlainText(message.content));
+    return text ? [{ kind: "toolResult", name: message.toolName, text, isError: message.isError }] : [];
+  }
+
+  if (message.role === "bashExecution") {
+    const command = message.command ?? "";
+    return command || message.output
+      ? [{ kind: "bash", command, output: cleanPreviewText(message.output ?? ""), isError: message.isError }]
+      : [];
+  }
+
+  if (message.role === "compactionSummary" || message.role === "branchSummary") {
+    const text = cleanPreviewText(message.summary ?? contentToPlainText(message.content));
+    return text ? [{ kind: "summary", label: message.role === "branchSummary" ? "Branch summary" : "Summary", text }] : [];
+  }
+
+  const text = cleanPreviewText(message.summary ?? contentToPlainText(message.content));
+  return text ? [{ kind: "custom", label: message.role || "Message", text }] : [];
+}
+
+export function buildSessionPreview(
+  session: SessionInfoLike,
+  messages: PreviewMessageLike[],
+  options: { maxMessages?: number } = {},
+): SessionPreview {
+  const maxMessages = options.maxMessages ?? 80;
+  const blocks: PreviewBlock[] = [];
+  const omitted = Math.max(0, messages.length - maxMessages);
+  const visibleMessages = omitted > 0 ? messages.slice(-maxMessages) : messages;
+
+  if (omitted > 0) {
+    blocks.push({ kind: "notice", text: `… ${omitted} earlier messages omitted` });
+  }
+
+  for (const message of visibleMessages) {
+    blocks.push(...messageToBlocks(message));
+  }
+
+  const messageCount = session.messageCount ?? messages.length;
+  return {
+    title: buildSessionLabel(session),
+    subtitle: `${formatTimestamp(session.modified)} · ${messageCount} messages · ${session.cwd}`,
+    blocks: blocks.length > 0 ? blocks : [{ kind: "notice", text: "No previewable messages." }],
+  };
+}
+
+export function buildPreviewError(session: SessionInfoLike, error: unknown): SessionPreview {
+  const message = error instanceof Error ? error.message : String(error);
+  return {
+    title: buildSessionLabel(session),
+    subtitle: `${formatTimestamp(session.modified)} · preview unavailable`,
+    blocks: [{ kind: "notice", text: `Failed to load preview: ${message}` }],
+    error: message,
+  };
 }
