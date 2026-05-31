@@ -195,7 +195,7 @@ describe("buildSessionPreview", () => {
     messageCount: 3,
   };
 
-  it("formats selected session messages with role labels", () => {
+  it("formats selected session messages as semantic preview blocks", () => {
     const preview = buildSessionPreview(session, [
       { role: "user", content: "Fix the sessions picker" },
       {
@@ -214,16 +214,11 @@ describe("buildSessionPreview", () => {
 
     assert.equal(preview.title, "Preview test");
     assert.equal(preview.subtitle, "2026-02-04 14:12 · 3 messages · /work/app");
-    assert.deepEqual(preview.lines, [
-      "User:",
-      "  Fix the sessions picker",
-      "",
-      "Assistant:",
-      "  I'll inspect it.",
-      "  [tool call: read]",
-      "",
-      "Tool:read:",
-      "  extensions/sessions/index.ts",
+    assert.deepEqual(preview.blocks, [
+      { kind: "user", text: "Fix the sessions picker" },
+      { kind: "assistant", text: "I'll inspect it." },
+      { kind: "toolCall", name: "read", args: undefined },
+      { kind: "toolResult", name: "read", text: "extensions/sessions/index.ts", isError: undefined },
     ]);
   });
 
@@ -238,15 +233,15 @@ describe("buildSessionPreview", () => {
       { maxMessages: 2 },
     );
 
-    assert.equal(preview.lines[0], "… 1 earlier messages omitted");
-    assert.ok(preview.lines.includes("  two"));
-    assert.ok(preview.lines.includes("  three"));
+    assert.deepEqual(preview.blocks[0], { kind: "notice", text: "… 1 earlier messages omitted" });
+    assert.ok(preview.blocks.some((block) => block.kind === "assistant" && block.text === "two"));
+    assert.ok(preview.blocks.some((block) => block.kind === "user" && block.text === "three"));
   });
 
   it("formats preview load errors", () => {
     const preview = buildPreviewError(session, new Error("bad jsonl"));
 
     assert.equal(preview.error, "bad jsonl");
-    assert.deepEqual(preview.lines, ["Failed to load preview: bad jsonl"]);
+    assert.deepEqual(preview.blocks, [{ kind: "notice", text: "Failed to load preview: bad jsonl" }]);
   });
 });

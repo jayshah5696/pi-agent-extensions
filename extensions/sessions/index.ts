@@ -22,6 +22,7 @@ import {
   filterSessionEntries,
   getSessionPaneLayout,
   parseLimit,
+  type PreviewBlock,
   type SessionInfoLike,
   type SessionPreview,
 } from "./sessions.js";
@@ -51,27 +52,149 @@ const padAnsiRight = (text: string, width: number): string => {
 };
 
 const themeText = (
-  theme: { fg: (color: any, text: string) => string; bold: (text: string) => string },
-  kind: "title" | "subtitle" | "rule" | "role" | "error" | "muted" | "text",
+  theme: { fg: (color: any, text: string) => string; bold: (text: string) => string; italic?: (text: string) => string },
+  kind: "title" | "subtitle" | "rule" | "user" | "assistant" | "tool" | "error" | "muted" | "text" | "thinking",
   text: string,
 ): string => {
   if (kind === "title") return theme.fg("accent", theme.bold(text));
   if (kind === "subtitle") return theme.fg("dim", text);
   if (kind === "rule") return theme.fg("border", text);
-  if (kind === "role") return theme.fg("warning", theme.bold(text));
+  if (kind === "user") return theme.fg("accent", theme.bold(text));
+  if (kind === "assistant") return theme.fg("warning", theme.bold(text));
+  if (kind === "tool") return theme.fg("muted", theme.bold(text));
   if (kind === "error") return theme.fg("error", text);
   if (kind === "muted") return theme.fg("muted", text);
+  if (kind === "thinking") return theme.italic ? theme.italic(theme.fg("dim", text)) : theme.fg("dim", text);
   return theme.fg("text", text);
 };
 
-const wrapPreviewLine = (
-  line: string,
+interface PreviewRenderOptions {
+  toolsExpanded: boolean;
+  thinkingVisible: boolean;
+}
+
+const splitLines = (text: string): string[] => text.replace(/\r\n/g, "\n").split("\n");
+
+const compactText = (text: string, maxLines: number): { lines: string[]; hidden: number } => {
+  const lines = splitLines(text).map((line) => line.replace(/\s+$/g, "")).filter((line) => line.trim().length > 0);
+  if (lines.length <= maxLines) return { lines, hidden: 0 };
+  return { lines: lines.slice(0, maxLines), hidden: lines.length - maxLines };
+};
+
+const wrapStyled = (
+  prefix: string,
+  text: string,
+  width: number,
+  color: (line: string) => string,
+): string[] => {
+  const contentWidth = Math.max(1, width - visibleWidth(prefix));
+  const wrapped = wrapTextWithAnsi(color(text), contentWidth);
+  return wrapped.map((line) => `${prefix}${line}`);
+};
+
+const renderTextBlock = (
+  label: string,
+  text: string,
   width: number,
   theme: { fg: (color: any, text: string) => string; bold: (text: string) => string },
+  labelKind: "user" | "assistant" | "tool" | "muted" | "error" | "thinking",
 ): string[] => {
-  const isRole = /^[A-Za-z][\w :-]*:$/.test(line);
-  const styled = isRole ? themeText(theme, "role", line) : themeText(theme, "text", line);
-  return wrapTextWithAnsi(styled, Math.max(1, width));
+  const lines = [themeText(theme, labelKind, label)];
+  for (const rawLine of splitLines(text)) {
+    if (!rawLine.trim()) {
+      lines.push("");
+      continue;
+    }
+    lines.push(...wrapStyled("  ", rawLine.trimEnd(), width, (line) => theme.fg("text", line)));
+  }
+  return lines;
+};
+
+const isToolBlock = (block: PreviewBlock): boolean =>
+  block.kind === "toolCall" || block.kind === "toolResult" || block.kind === "bash";
+
+const summarizeToolRun = (blocks: PreviewBlock[]): string => {
+  const names = new Set<string>();
+  let outputLines = 0;
+  let hasError = false;
+
+  for (const block of blocks) {
+    if (block.kind === "toolCall") names.add(block.name);
+    if (block.kind === "toolResult") {
+      if (block.name) names.add(block.name);
+      outputLines += compactText(block.text, Number.MAX_SAFE_INTEGER).lines.length;
+      hasError ||= !!block.isError;
+    }
+    if (block.kind === "bash") {
+      names.add("bash");
+      outputLines += compactText(block.output ?? "", Number.MAX_SAFE_INTEGER).lines.length;
+      hasError ||= !!block.isError;
+    }
+  }
+
+  const nameList = Array.from(names).slice(0, 4).join(", ");
+  const moreNames = names.size > 4 ? ` +${names.size - 4}` : "";
+  const output = outputLines > 0 ? ` · ${outputLines} output lines` : "";
+  return `${hasError ? "✖" : "▸"} Tool activity · ${blocks.length} events${nameList ? ` · ${nameList}${moreNames}` : ""}${output} (press t)`;
+};
+
+const renderPreviewBlock = (
+  block: PreviewBlock,
+  width: number,
+  theme: { fg: (color: any, text: string) => string; bold: (text: string) => string; italic?: (text: string) => string },
+  options: PreviewRenderOptions,
+): string[] => {
+  if (block.kind === "notice") {
+    return wrapTextWithAnsi(themeText(theme, "muted", block.text), width);
+  }
+
+  if (block.kind === "user") {
+    return renderTextBlock("◆ User", block.text, width, theme, "user");
+  }
+
+  if (block.kind === "assistant") {
+    return renderTextBlock("● Assistant", block.text, width, theme, "assistant");
+  }
+
+  if (block.kind === "thinking") {
+    if (!options.thinkingVisible) return [themeText(theme, "thinking", "◌ Thinking hidden")];
+    return renderTextBlock("◌ Thinking", block.text, width, theme, "thinking");
+  }
+
+  if (block.kind === "toolCall") {
+    const header = `▸ Tool call · ${block.name}`;
+    if (!options.toolsExpanded || !block.args) return [themeText(theme, "tool", header)];
+    return [themeText(theme, "tool", header), ...wrapStyled("  ", block.args, width, (line) => theme.fg("muted", line))];
+  }
+
+  if (block.kind === "toolResult") {
+    const label = `${block.isError ? "✖" : "▸"} Tool result${block.name ? ` · ${block.name}` : ""}`;
+    const compact = compactText(block.text, options.toolsExpanded ? 200 : 4);
+    const lines = [themeText(theme, block.isError ? "error" : "tool", label)];
+    for (const line of compact.lines) {
+      lines.push(...wrapStyled("  ", line, width, (value) => theme.fg(block.isError ? "error" : "muted", value)));
+    }
+    if (compact.hidden > 0) lines.push(theme.fg("dim", `  … ${compact.hidden} output lines collapsed (press t to expand tools)`));
+    return lines;
+  }
+
+  if (block.kind === "bash") {
+    const label = `${block.isError ? "✖" : "▸"} Bash`;
+    const lines = [themeText(theme, block.isError ? "error" : "tool", label)];
+    if (block.command) lines.push(...wrapStyled("  ", `$ ${block.command}`, width, (line) => theme.fg("accent", line)));
+    const compact = compactText(block.output ?? "", options.toolsExpanded ? 200 : 4);
+    for (const line of compact.lines) {
+      lines.push(...wrapStyled("  ", line, width, (value) => theme.fg(block.isError ? "error" : "muted", value)));
+    }
+    if (compact.hidden > 0) lines.push(theme.fg("dim", `  … ${compact.hidden} output lines collapsed (press t to expand tools)`));
+    return lines;
+  }
+
+  if (block.kind === "summary") {
+    return renderTextBlock(`◇ ${block.label}`, block.text, width, theme, "muted");
+  }
+
+  return renderTextBlock(`◇ ${block.label}`, block.text, width, theme, "muted");
 };
 
 const renderPreview = (
@@ -79,7 +202,8 @@ const renderPreview = (
   width: number,
   height: number,
   scrollOffset: number,
-  theme: { fg: (color: any, text: string) => string; bold: (text: string) => string },
+  theme: { fg: (color: any, text: string) => string; bold: (text: string) => string; italic?: (text: string) => string },
+  options: PreviewRenderOptions,
 ): { lines: string[]; totalLines: number; maxScroll: number } => {
   const raw: string[] = [];
 
@@ -91,12 +215,22 @@ const renderPreview = (
     raw.push(themeText(theme, "subtitle", preview.subtitle));
     raw.push(themeText(theme, "rule", "─".repeat(Math.max(0, width))));
 
-    for (const line of preview.lines) {
-      if (line === "") {
-        raw.push("");
-      } else {
-        raw.push(...wrapPreviewLine(line, width, theme));
+    for (let i = 0; i < preview.blocks.length; i++) {
+      const block = preview.blocks[i]!;
+      if (!options.toolsExpanded && isToolBlock(block)) {
+        const run: PreviewBlock[] = [];
+        while (i < preview.blocks.length && isToolBlock(preview.blocks[i]!)) {
+          run.push(preview.blocks[i]!);
+          i++;
+        }
+        i--;
+        if (raw.length > 3) raw.push("");
+        raw.push(...wrapTextWithAnsi(themeText(theme, "tool", summarizeToolRun(run)), width));
+        continue;
       }
+
+      if (raw.length > 3) raw.push("");
+      raw.push(...renderPreviewBlock(block, width, theme, options));
     }
   }
 
@@ -200,6 +334,8 @@ async function showSessionPicker(
     let filteredEntries = entries;
     let selectedPath = sorted[0]?.path ?? "";
     let previewScrollOffset = 0;
+    let toolsExpanded = false;
+    let thinkingVisible = false;
     const previewCache = new Map<string, SessionPreview>();
     let activePreview: SessionPreview | undefined;
     let previewTimer: ReturnType<typeof setTimeout> | undefined;
@@ -225,7 +361,7 @@ async function showSessionPicker(
       activePreview = {
         title: buildSessionLabel(session),
         subtitle: `${session.modified.toLocaleString()} · loading preview`,
-        lines: ["Loading selected session…"],
+        blocks: [{ kind: "notice", text: "Loading selected session…" }],
       };
 
       if (previewTimer) clearTimeout(previewTimer);
@@ -341,11 +477,15 @@ async function showSessionPicker(
       const leftLines = [filterLine, ...selectList.render(layout.listWidth)].slice(0, contentHeight);
       while (leftLines.length < contentHeight) leftLines.push("");
 
-      const renderedPreview = renderPreview(activePreview, layout.previewWidth, contentHeight, previewScrollOffset, theme);
+      const renderedPreview = renderPreview(activePreview, layout.previewWidth, contentHeight, previewScrollOffset, theme, {
+        toolsExpanded,
+        thinkingVisible,
+      });
       previewScrollOffset = Math.min(previewScrollOffset, renderedPreview.maxScroll);
+      const modeHints = `t ${toolsExpanded ? "compact" : "tools"} • h ${thinkingVisible ? "hide thinking" : "thinking"}`;
       const previewStats = renderedPreview.maxScroll > 0
-        ? ` ${previewScrollOffset + 1}-${Math.min(previewScrollOffset + contentHeight, renderedPreview.totalLines)}/${renderedPreview.totalLines} • pgup/pgdn scroll `
-        : " esc cancel • enter open ";
+        ? ` ${previewScrollOffset + 1}-${Math.min(previewScrollOffset + contentHeight, renderedPreview.totalLines)}/${renderedPreview.totalLines} • pgup/pgdn • ${modeHints} `
+        : ` esc/enter • ${modeHints} `;
 
       const lines = [buildTopBorder(layout.listWidth, layout.previewWidth)];
       for (let i = 0; i < contentHeight; i++) {
@@ -380,15 +520,21 @@ async function showSessionPicker(
           return;
         }
 
-        if (isPrintable(data)) {
-          filter += data;
-          rebuild();
-          tui.requestRender();
-          return;
-        }
-
         const currentLayout = getSessionPaneLayout(tui.terminal?.columns ?? 80);
         if (currentLayout.mode === "split") {
+          if (data === "t") {
+            toolsExpanded = !toolsExpanded;
+            previewScrollOffset = 0;
+            tui.requestRender();
+            return;
+          }
+          if (data === "h") {
+            thinkingVisible = !thinkingVisible;
+            previewScrollOffset = 0;
+            tui.requestRender();
+            return;
+          }
+
           const pageSize = Math.max(4, (tui.terminal?.rows ?? 24) - 4);
           if (matchesKey(data, Key.pageDown) || matchesKey(data, Key.ctrl("d"))) {
             previewScrollOffset += pageSize;
@@ -400,6 +546,13 @@ async function showSessionPicker(
             tui.requestRender();
             return;
           }
+        }
+
+        if (isPrintable(data)) {
+          filter += data;
+          rebuild();
+          tui.requestRender();
+          return;
         }
 
         if (kb.matches(data, "tui.select.pageUp")) {

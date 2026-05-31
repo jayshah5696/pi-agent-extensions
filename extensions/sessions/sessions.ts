@@ -27,10 +27,21 @@ export interface PreviewMessageLike {
   summary?: string;
 }
 
+export type PreviewBlock =
+  | { kind: "notice"; text: string }
+  | { kind: "user"; text: string }
+  | { kind: "assistant"; text: string }
+  | { kind: "thinking"; text: string; redacted?: boolean }
+  | { kind: "toolCall"; name: string; args?: string }
+  | { kind: "toolResult"; name?: string; text: string; isError?: boolean }
+  | { kind: "bash"; command: string; output?: string; isError?: boolean }
+  | { kind: "summary"; label: string; text: string }
+  | { kind: "custom"; label: string; text: string };
+
 export interface SessionPreview {
   title: string;
   subtitle: string;
-  lines: string[];
+  blocks: PreviewBlock[];
   error?: string;
 }
 
@@ -128,46 +139,76 @@ export function getSessionPaneLayout(width: number): SessionPaneLayout {
   };
 }
 
-function previewContentToText(content: PreviewContent | undefined): string {
+const cleanPreviewText = (text: string): string => text.replace(/\s+$/g, "");
+
+function textBlocksFromContent(content: PreviewContent | undefined): PreviewBlock[] {
+  if (!content) return [];
+  if (typeof content === "string") return content.trim() ? [{ kind: "assistant", text: cleanPreviewText(content) }] : [];
+
+  const blocks: PreviewBlock[] = [];
+  for (const part of content) {
+    if (part.type === "text" && part.text.trim()) {
+      blocks.push({ kind: "assistant", text: cleanPreviewText(part.text) });
+    } else if (part.type === "image") {
+      blocks.push({ kind: "notice", text: `[image${part.mimeType ? `: ${part.mimeType}` : ""}]` });
+    } else if (part.type === "toolCall") {
+      const args = part.arguments && Object.keys(part.arguments).length > 0 ? JSON.stringify(part.arguments) : undefined;
+      blocks.push({ kind: "toolCall", name: part.name, args });
+    } else if (part.type === "thinking") {
+      blocks.push({
+        kind: "thinking",
+        text: part.redacted ? "[thinking redacted]" : cleanPreviewText(part.thinking ?? "[thinking]"),
+        redacted: part.redacted,
+      });
+    }
+  }
+  return blocks;
+}
+
+function contentToPlainText(content: PreviewContent | undefined): string {
   if (!content) return "";
   if (typeof content === "string") return content;
-
   return content
     .map((part) => {
       if (part.type === "text") return part.text;
       if (part.type === "image") return `[image${part.mimeType ? `: ${part.mimeType}` : ""}]`;
       if (part.type === "toolCall") return `[tool call: ${part.name}]`;
-      if (part.type === "thinking") {
-        if (part.redacted) return "[thinking redacted]";
-        return part.thinking ? `[thinking] ${part.thinking}` : "[thinking]";
-      }
+      if (part.type === "thinking") return part.redacted ? "[thinking redacted]" : (part.thinking ?? "[thinking]");
       return "";
     })
     .filter(Boolean)
     .join("\n");
 }
 
-function previewMessageLabel(message: PreviewMessageLike): string {
-  if (message.role === "user") return "User";
-  if (message.role === "assistant") return "Assistant";
-  if (message.role === "toolResult" || message.role === "tool") {
-    const prefix = message.isError ? "Tool error" : "Tool";
-    return message.toolName ? `${prefix}:${message.toolName}` : prefix;
+function messageToBlocks(message: PreviewMessageLike): PreviewBlock[] {
+  if (message.role === "user") {
+    const text = cleanPreviewText(contentToPlainText(message.content));
+    return text ? [{ kind: "user", text }] : [];
   }
-  if (message.role === "bashExecution") return "Bash";
-  if (message.role === "compactionSummary") return "Summary";
-  if (message.role === "branchSummary") return "Branch";
-  if (message.role === "custom") return "Custom";
-  return message.role;
-}
 
-function previewMessageText(message: PreviewMessageLike): string {
-  if (message.role === "bashExecution") {
-    const command = message.command ? `$ ${message.command}` : "$";
-    return message.output ? `${command}\n${message.output}` : command;
+  if (message.role === "assistant") {
+    return textBlocksFromContent(message.content);
   }
-  if (message.summary) return message.summary;
-  return previewContentToText(message.content);
+
+  if (message.role === "toolResult" || message.role === "tool") {
+    const text = cleanPreviewText(contentToPlainText(message.content));
+    return text ? [{ kind: "toolResult", name: message.toolName, text, isError: message.isError }] : [];
+  }
+
+  if (message.role === "bashExecution") {
+    const command = message.command ?? "";
+    return command || message.output
+      ? [{ kind: "bash", command, output: cleanPreviewText(message.output ?? ""), isError: message.isError }]
+      : [];
+  }
+
+  if (message.role === "compactionSummary" || message.role === "branchSummary") {
+    const text = cleanPreviewText(message.summary ?? contentToPlainText(message.content));
+    return text ? [{ kind: "summary", label: message.role === "branchSummary" ? "Branch summary" : "Summary", text }] : [];
+  }
+
+  const text = cleanPreviewText(message.summary ?? contentToPlainText(message.content));
+  return text ? [{ kind: "custom", label: message.role || "Message", text }] : [];
 }
 
 export function buildSessionPreview(
@@ -176,35 +217,23 @@ export function buildSessionPreview(
   options: { maxMessages?: number } = {},
 ): SessionPreview {
   const maxMessages = options.maxMessages ?? 80;
-  const lines: string[] = [];
+  const blocks: PreviewBlock[] = [];
   const omitted = Math.max(0, messages.length - maxMessages);
   const visibleMessages = omitted > 0 ? messages.slice(-maxMessages) : messages;
 
   if (omitted > 0) {
-    lines.push(`… ${omitted} earlier messages omitted`);
-    lines.push("");
+    blocks.push({ kind: "notice", text: `… ${omitted} earlier messages omitted` });
   }
 
   for (const message of visibleMessages) {
-    const label = previewMessageLabel(message);
-    const text = previewMessageText(message).replace(/\s+$/g, "");
-    if (!text.trim()) continue;
-
-    lines.push(`${label}:`);
-    for (const line of text.split(/\r?\n/)) {
-      const normalized = line.replace(/\s+/g, " ").trim();
-      if (normalized) lines.push(`  ${normalized}`);
-    }
-    lines.push("");
+    blocks.push(...messageToBlocks(message));
   }
-
-  if (lines.at(-1) === "") lines.pop();
 
   const messageCount = session.messageCount ?? messages.length;
   return {
     title: buildSessionLabel(session),
     subtitle: `${formatTimestamp(session.modified)} · ${messageCount} messages · ${session.cwd}`,
-    lines: lines.length > 0 ? lines : ["No previewable messages."],
+    blocks: blocks.length > 0 ? blocks : [{ kind: "notice", text: "No previewable messages." }],
   };
 }
 
@@ -213,7 +242,7 @@ export function buildPreviewError(session: SessionInfoLike, error: unknown): Ses
   return {
     title: buildSessionLabel(session),
     subtitle: `${formatTimestamp(session.modified)} · preview unavailable`,
-    lines: [`Failed to load preview: ${message}`],
+    blocks: [{ kind: "notice", text: `Failed to load preview: ${message}` }],
     error: message,
   };
 }
