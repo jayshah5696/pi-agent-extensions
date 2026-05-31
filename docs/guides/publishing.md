@@ -2,6 +2,8 @@
 
 This package is published to npm as `pi-agent-extensions`.
 
+We use a custom release script and a task runner (`just`) to automate the verification and publishing steps.
+
 ## Prerequisites
 
 - You are on `main`.
@@ -13,20 +15,71 @@ This package is published to npm as `pi-agent-extensions`.
 
 For accounts with publish-time 2FA, use a fresh OTP when npm prompts. For non-interactive publishing, use a granular or automation token that is allowed to publish with 2FA bypass.
 
-## Check a release
+## Task Runner Commands (`just`)
 
-Run tests and inspect package contents:
+Installing `just` (see [Installation](https://github.com/casey/just)) simplifies running release tasks:
 
+### Show Available Tasks
+```bash
+just
+```
+
+### Run Tests
+```bash
+just test
+```
+
+### View Version Status
+Displays local `package.json` version and currently published npm registry version:
+```bash
+just versions
+```
+
+### Dry-run Package Inspection
+Shows what files will be packed into the release bundle:
+```bash
+just pack-dry-run
+```
+
+### Run Release Checks
+Performs a dry-run check comparing the local version against the published version, packing, and testing:
+```bash
+just release-check
+```
+
+### Publish a Release
+Publishes the package, bumps the version, creates a Git tag, and pushes to remote. Usage:
+```bash
+just release patch        # Standard patch bump
+just release minor        # Standard minor bump
+just release major        # Standard major bump
+just release 0.4.5        # Explicit version target
+```
+
+Alternative helper tasks:
+```bash
+just release-patch
+just release-minor
+just release-major
+```
+
+Set `YES=1` to skip confirmation prompts:
+```bash
+YES=1 just release patch
+```
+
+---
+
+## Alternative NPM Scripts (Wrapper Commands)
+
+If you do not have `just` installed, you can use these `npm run` wrapper commands:
+
+### Run Release Checks
 ```bash
 npm run release:check
 ```
 
-`release:check` expects the local `package.json` version to be greater than the currently published npm version. If you have not bumped the version yet, it will fail intentionally.
-
-## Publish a release
-
-Patch release:
-
+### Publish a Release
 ```bash
 npm run release:publish -- patch
 ```

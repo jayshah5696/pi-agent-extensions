@@ -19,19 +19,18 @@ The following extensions were adapted from this repository with gratitude:
 | **files** | `pi-extensions/files.ts` | Unified file browser with git status integration |
 | **review** | `pi-extensions/review.ts` | Code review system for uncommitted changes, PRs, and commits |
 | **loop** | `pi-extensions/loop.ts` | Iterative execution loop for automated workflows |
-
-**Key contributions from this codebase:**
-- Production-ready TUI components
-- Git workflow integration patterns
-- Session state management via custom entries
-- Model selection strategies for utility tasks
-- OSC 777 notification implementation
+| **todos** | `pi-extensions/todos.ts` | File-based task list management |
+| **control** | `pi-extensions/control.ts` | Inter-session communication & control via RPC |
+| **answer** | `pi-extensions/answer.ts` | Question extraction UI |
+| **cwd-history** | `pi-extensions/cwd-history.ts` | Tracks directory changes |
+| **whimsical** | `pi-extensions/whimsical.ts` | Base loader logic (significantly expanded in this repo) |
+| **session-breakdown**| `pi-extensions/session-breakdown.ts`| Session analytics dashboard |
 
 ### Modifications
 
 The adapted extensions maintain the original architecture and core functionality, with the following modifications:
 - Integration with our existing extension structure
-- Consistent file naming (all extensions use `index.ts`)
+- Consistent file naming (all extensions use `index.ts` or index-referenced modules)
 - Added to our package.json pi.extensions array
 - Documented in our docs/ folder
 
@@ -50,6 +49,8 @@ The following extensions were developed specifically for this project:
 | **sessions** | Jayesh Shah | Quick session picker with filtering |
 | **ask-user** | Jayesh Shah | Structured LLM-to-user question tool |
 | **handoff** | Jayesh Shah | Goal-driven context transfer |
+| **btw** | Jayesh Shah | Ephemeral overlay for side questions (inspired by Claude Code) |
+| **powerline-footer** | Jayesh Shah | Custom Powerline status bar replacing default Pi footer |
 
 ## Additional Credits
 
@@ -59,8 +60,8 @@ The following extensions were developed specifically for this project:
 
 ## Contributing
 
-If you'd like to contribute to this project, please see [CONTRIBUTING.md](CONTRIBUTING.md) (if available) or open an issue/PR on GitHub.
+If you'd like to contribute to this project, please open an issue/PR on GitHub.
 
 ---
 
-*Last updated: February 6, 2026*
+*Last updated: May 30, 2026*
