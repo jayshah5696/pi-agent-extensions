@@ -4,7 +4,19 @@ export interface SessionInfoLike {
   cwd: string;
   modified: Date;
   firstMessage: string;
+  allMessagesText?: string;
   path: string;
+}
+
+export interface SessionPickerLayout {
+  showPreview: boolean;
+  listWidth: number;
+  previewWidth: number;
+}
+
+export interface SessionPreviewOptions {
+  maxChars?: number;
+  maxLineLength?: number;
 }
 
 export function parseLimit(args: string | undefined, defaultLimit = 5): number {
@@ -71,4 +83,46 @@ export function filterSessionEntries(entries: SessionSearchEntry[], filter: stri
 
 export function filterSessionInfos(sessions: SessionInfoLike[], filter: string): SessionInfoLike[] {
   return filterSessionEntries(buildSessionSearchEntries(sessions), filter).map((entry) => entry.session);
+}
+
+export function calculateSessionPickerLayout(width: number): SessionPickerLayout {
+  return { showPreview: true, listWidth: width, previewWidth: width };
+}
+
+const truncatePlain = (text: string, maxLength: number): string => {
+  if (maxLength < 1) return "";
+  if (text.length <= maxLength) return text;
+  if (maxLength === 1) return "…";
+  return `${text.slice(0, maxLength - 1)}…`;
+};
+
+const wrapPlainLine = (line: string, width: number): string[] => {
+  if (width < 1) return [""];
+  if (line.length <= width) return [line];
+
+  const wrapped: string[] = [];
+  let remaining = line;
+  while (remaining.length > width) {
+    wrapped.push(remaining.slice(0, width));
+    remaining = remaining.slice(width);
+  }
+  wrapped.push(remaining);
+  return wrapped;
+};
+
+export function buildSessionPreview(session: SessionInfoLike, options: SessionPreviewOptions = {}): string[] {
+  const maxChars = options.maxChars ?? 30_000;
+  const maxLineLength = options.maxLineLength ?? 120;
+  const title = buildSessionLabel(session);
+  const body = (session.allMessagesText ?? session.firstMessage ?? "").replace(/\r\n/g, "\n").trim();
+  const clippedBody = truncatePlain(body.length > 0 ? body : "No messages", maxChars);
+  const lines = clippedBody.split("\n").flatMap((line) => wrapPlainLine(line.trimEnd(), maxLineLength));
+
+  return [
+    title,
+    formatTimestamp(session.modified),
+    session.cwd,
+    "",
+    ...lines,
+  ];
 }

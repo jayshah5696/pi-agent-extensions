@@ -3,7 +3,9 @@ import { describe, it } from "node:test";
 import {
   buildSessionDescription,
   buildSessionLabel,
+  buildSessionPreview,
   buildSessionSearchEntries,
+  calculateSessionPickerLayout,
   filterSessionEntries,
   filterSessionInfos,
   formatTimestamp,
@@ -152,5 +154,70 @@ describe("filterSessionInfos", () => {
     const entries = buildSessionSearchEntries(sessions);
     const filtered = filterSessionEntries(entries, "ref work");
     assert.deepEqual(filtered.map((entry) => entry.session), [sessions[0]]);
+  });
+});
+
+describe("calculateSessionPickerLayout", () => {
+  it("uses full-width preview on narrow terminals", () => {
+    assert.deepEqual(calculateSessionPickerLayout(99), {
+      showPreview: true,
+      listWidth: 99,
+      previewWidth: 99,
+    });
+  });
+
+  it("uses full-width preview on medium terminals", () => {
+    assert.deepEqual(calculateSessionPickerLayout(120), {
+      showPreview: true,
+      listWidth: 120,
+      previewWidth: 120,
+    });
+  });
+
+  it("uses full-width preview on wide terminals", () => {
+    assert.deepEqual(calculateSessionPickerLayout(160), {
+      showPreview: true,
+      listWidth: 160,
+      previewWidth: 160,
+    });
+  });
+});
+
+describe("buildSessionPreview", () => {
+  const session: SessionInfoLike = {
+    id: "abc123def456",
+    name: "Refactor auth",
+    cwd: "/work/app",
+    modified: new Date(2026, 1, 4, 14, 12, 0),
+    firstMessage: "Fix login",
+    allMessagesText: "user: Fix login\n\nassistant: Updated the auth flow.",
+    path: "/sessions/one.jsonl",
+  };
+
+  it("includes metadata and full message text", () => {
+    assert.deepEqual(buildSessionPreview(session, { maxLineLength: 120 }), [
+      "Refactor auth",
+      "2026-02-04 14:12",
+      "/work/app",
+      "",
+      "user: Fix login",
+      "",
+      "assistant: Updated the auth flow.",
+    ]);
+  });
+
+  it("falls back to first message when all message text is unavailable", () => {
+    const preview = buildSessionPreview({ ...session, allMessagesText: undefined });
+    assert.ok(preview.includes("Fix login"));
+  });
+
+  it("truncates long previews", () => {
+    const preview = buildSessionPreview({ ...session, allMessagesText: "A".repeat(20) }, { maxChars: 5 });
+    assert.equal(preview.at(-1), "AAAA…");
+  });
+
+  it("wraps long lines", () => {
+    const preview = buildSessionPreview({ ...session, allMessagesText: "ABCDEFGHIJ" }, { maxLineLength: 4 });
+    assert.deepEqual(preview.slice(4), ["ABCD", "EFGH", "IJ"]);
   });
 });
