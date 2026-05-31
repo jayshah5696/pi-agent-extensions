@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- Added release helper scripts and `just` recipes for repeatable npm publishing (`release:check`, `release:publish`, `just release patch`, etc.).
+
+## [0.4.4] - 2026-05-31
+
+### Added
+- **Sessions**: `/sessions` now opens a full-window split-pane picker with the session list on the left and a live selected-session preview on the right.
+- **Sessions preview rendering**: Added Pi-like semantic preview blocks for user, assistant, tool, bash, thinking, summary, and error content.
+- **Sessions preview controls**: Added preview scrolling with `PgUp`/`PgDn` and `Ctrl+u`/`Ctrl+d`, `t` to expand/compact tool activity, and `h` to show/hide thinking.
+- **Sessions preview screenshot**: Added repository screenshot artifacts for the full-window sessions picker.
+
+### Changed
+- **Sessions**: Tool activity is collapsed by default in previews to keep historical sessions readable; thinking blocks are hidden by default.
+- **Sessions**: Added debounced preview loading, stale-load protection, and preview caching keyed by session path and modified time.
+
+### Fixed
+- **Handoff**: Fixed stale command context usage after session replacement.
+- **Powerline footer / BTW**: Polished stale footer/session behavior and improved the `/btw` overlay experience.
+
 ## [0.4.1] - 2026-04-09
 
 ### Fixed
