@@ -33,7 +33,6 @@ Original repository: https://github.com/mitsuhiko/agent-stuff
 | **answer** | Tool | Structured Q&A for complex queries | ⚙️ Beta |
 | **cwd_history** | Tracker | Tracks directory changes in context | ✅ Stable |
 | **btw** | Command | Quick side questions without history | ✅ Stable |
-| **nvidia-nim** | Command | Nvidia NIM auth & config | ✅ Stable |
 | **powerline-footer** | UI | Custom powerline-style footer bar | ✅ Stable |
 | **session-breakdown** | Command | Session analytics dashboard | ✅ Stable |
 
@@ -332,13 +331,6 @@ Iterative execution loop for complex tasks.
 RPC-based session control. Allows sessions to talk to each other (e.g., a "manager" session spawning and controlling "worker" sessions).
 - Flag: `--session-control`
 - Tool: `send_to_session`
-
-**Nvidia NIM (`/nvidia-nim-auth`)**
-Authenticate and configure Nvidia NIM as an LLM provider.
-- Commands: `/nvidia-nim-auth` (alias: `/nvidia-auth`), `/nvidia-nim-models`
-- Saves provider config to `~/.pi/nvidia-nim.json`
-- Adds configured models to `~/.pi/agent/settings.json` `enabledModels` for scoped `/model` + Ctrl+P cycling
-- Model IDs must be `org/model` (exactly one `/`), e.g. `moonshotai/kimi-k2.5` (not `nvidia/moonshotai/kimi-k2.5`)
 
 **Powerline Footer**
 Custom powerline-style footer replacing the default pi footer with richer information.
