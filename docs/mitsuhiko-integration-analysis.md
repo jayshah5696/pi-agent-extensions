@@ -536,9 +536,9 @@ import assert from "node:assert/strict";
 
 **New dependencies needed:**
 - None! All extensions use peer dependencies you already have:
-  - `@mariozechner/pi-coding-agent`
-  - `@mariozechner/pi-ai`
-  - `@mariozechner/pi-tui`
+  - `@earendil-works/pi-coding-agent`
+  - `@earendil-works/pi-ai`
+  - `@earendil-works/pi-tui`
   - `@sinclair/typebox` (you already use this)
 
 **Optional dependencies:**

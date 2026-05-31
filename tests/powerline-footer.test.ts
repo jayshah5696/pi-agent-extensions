@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import powerlineFooterExtension from "../extensions/powerline-footer/index.js";
-import { visibleWidth } from "@mariozechner/pi-tui";
+import { visibleWidth } from "@earendil-works/pi-tui";
 
 type EventHandler = (event: any, ctx: any) => Promise<void> | void;
 

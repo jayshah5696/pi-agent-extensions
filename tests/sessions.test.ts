@@ -9,7 +9,10 @@ import {
   formatTimestamp,
   parseLimit,
   type SessionInfoLike,
+  formatPreviewEntries,
 } from "../extensions/sessions/sessions.js";
+import type { SessionEntry } from "@earendil-works/pi-coding-agent";
+
 
 describe("parseLimit", () => {
   it("returns default when args are missing", () => {
@@ -154,3 +157,75 @@ describe("filterSessionInfos", () => {
     assert.deepEqual(filtered.map((entry) => entry.session), [sessions[0]]);
   });
 });
+
+describe("formatPreviewEntries", () => {
+  const theme = {
+    fg: (key: string, text: string) => `[${key}]${text}[/${key}]`,
+    bold: (text: string) => `[bold]${text}[/bold]`,
+  };
+
+  it("formats user and assistant messages with indentation and color markup", () => {
+    const entries: SessionEntry[] = [
+      {
+        type: "message",
+        id: "msg1",
+        parentId: null,
+        timestamp: new Date().toISOString(),
+        message: {
+          role: "user",
+          content: [{ type: "text", text: "Hello agent" }],
+          timestamp: Date.now(),
+        },
+      },
+      {
+        type: "message",
+        id: "msg2",
+        parentId: "msg1",
+        timestamp: new Date().toISOString(),
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "Hello user! How can I help you today?" }],
+          timestamp: Date.now(),
+        },
+      },
+    ];
+
+    const lines = formatPreviewEntries(entries, 30, theme);
+    
+    // Check role highlighting
+    assert.ok(lines.includes("[accent][bold]User:[/bold][/accent]"));
+    assert.ok(lines.includes("[warning][bold]Assistant:[/bold][/warning]"));
+
+    // Check message wrapping & indentation
+    assert.ok(lines.includes("  Hello agent"));
+    // The assistant message must be wrapped because rightWidth-2 is 28 and text is 37
+    assert.ok(lines.some(l => l.startsWith("  Hello user!")));
+  });
+
+  it("handles compaction and branch summaries", () => {
+    const entries: SessionEntry[] = [
+      {
+        type: "compaction",
+        id: "comp1",
+        parentId: null,
+        timestamp: new Date().toISOString(),
+        summary: "Compacted initial setup",
+        firstKeptEntryId: "msg1",
+        tokensBefore: 100,
+      },
+      {
+        type: "branch_summary",
+        id: "branch1",
+        parentId: "comp1",
+        timestamp: new Date().toISOString(),
+        fromId: "msg1",
+        summary: "Branched off tests",
+      }
+    ];
+
+    const lines = formatPreviewEntries(entries, 40, theme);
+    assert.ok(lines.includes("[dim][Compaction: Compacted initial setup][/dim]"));
+    assert.ok(lines.includes("[dim][Branch Summary: Branched off tests][/dim]"));
+  });
+});
+

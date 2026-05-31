@@ -11,16 +11,16 @@
  *   /handoff add unit tests for the parser module
  */
 
-import { complete, getModel, type Message, type Model } from "@mariozechner/pi-ai";
+import { complete, getModel, type Message, type Model } from "@earendil-works/pi-ai";
 import type {
   ExtensionAPI,
   ExtensionCommandContext,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import {
   BorderedLoader,
   convertToLlm,
   serializeConversation,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 
 import { getRequestAuthOrThrow } from "../shared/auth.js";
 import { loadConfig, validateGoal } from "./config.js";
