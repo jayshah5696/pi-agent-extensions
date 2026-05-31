@@ -1,5 +1,5 @@
-import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
-import { Key, Loader, matchesKey } from "@mariozechner/pi-tui";
+import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import { Key, Loader, matchesKey } from "@earendil-works/pi-tui";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";

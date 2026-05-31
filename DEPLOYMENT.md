@@ -81,7 +81,7 @@ pi install npm:@tmustier/pi-usage-extension
 ```dockerfile
 FROM node:25-alpine
 
-RUN npm install -g @mariozechner/pi-coding-agent
+RUN npm install -g @earendil-works/pi-coding-agent
 
 # Clone dotfiles
 RUN git clone https://github.com/jayshah5696/dotfiles.git /dotfiles

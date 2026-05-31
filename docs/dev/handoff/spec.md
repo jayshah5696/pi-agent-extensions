@@ -559,9 +559,9 @@ validateFiles: boolean;  // Filter files not in conversation (default: true)
 - OpenAI Agents SDK: Handoffs (Python) — https://openai.github.io/openai-agents-python/handoffs/
 - OpenAI Agents SDK: Handoff prompt prefix — https://openai.github.io/openai-agents-python/ref/extensions/handoff_prompt/
 - OpenAI Agents SDK: Handoffs (JS) — https://openai.github.io/openai-agents-js/guides/handoffs/
-- Pi docs: Extensions — /opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/docs/extensions.md
-- Pi docs: Compaction — /opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/docs/compaction.md
-- Pi docs: Session format — /opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/docs/session.md
-- Pi docs: TUI — /opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/docs/tui.md
-- Pi docs: Skills — /opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/docs/skills.md
+- Pi docs: Extensions — /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/extensions.md
+- Pi docs: Compaction — /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/compaction.md
+- Pi docs: Session format — /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/session.md
+- Pi docs: TUI — /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md
+- Pi docs: Skills — /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/skills.md
 - Skill: llm-evals — /Users/jshah/.claude/skills/llm-evals/SKILL.md

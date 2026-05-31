@@ -4,8 +4,8 @@ import {
   Spacer,
   Text,
   type TUI,
-} from "@mariozechner/pi-tui";
-import { DynamicBorder } from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-tui";
+import { DynamicBorder } from "@earendil-works/pi-coding-agent";
 
 /**
  * Theme interface for progress component styling

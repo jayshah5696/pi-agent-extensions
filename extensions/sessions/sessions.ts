@@ -5,6 +5,39 @@ export interface SessionInfoLike {
   modified: Date;
   firstMessage: string;
   path: string;
+  messageCount?: number;
+}
+
+export type PreviewContent =
+  | string
+  | Array<
+      | { type: "text"; text: string }
+      | { type: "image"; mimeType?: string }
+      | { type: "toolCall"; name: string; arguments?: Record<string, unknown> }
+      | { type: "thinking"; thinking?: string; redacted?: boolean }
+    >;
+
+export interface PreviewMessageLike {
+  role: string;
+  content?: PreviewContent;
+  toolName?: string;
+  isError?: boolean;
+  command?: string;
+  output?: string;
+  summary?: string;
+}
+
+export interface SessionPreview {
+  title: string;
+  subtitle: string;
+  lines: string[];
+  error?: string;
+}
+
+export interface PaneLayout {
+  mode: "single" | "split";
+  listWidth: number;
+  previewWidth: number;
 }
 
 export function parseLimit(args: string | undefined, defaultLimit = 5): number {
@@ -71,4 +104,131 @@ export function filterSessionEntries(entries: SessionSearchEntry[], filter: stri
 
 export function filterSessionInfos(sessions: SessionInfoLike[], filter: string): SessionInfoLike[] {
   return filterSessionEntries(buildSessionSearchEntries(sessions), filter).map((entry) => entry.session);
+}
+
+export function getSessionPaneLayout(width: number): PaneLayout {
+  if (width < 100) {
+    return { mode: "single", listWidth: width, previewWidth: 0 };
+  }
+
+  const separatorWidth = 3;
+  const available = Math.max(0, width - separatorWidth);
+  let listRatio = 0.45;
+  if (width >= 180) {
+    listRatio = 0.34;
+  } else if (width >= 140) {
+    listRatio = 0.38;
+  }
+
+  const listWidth = Math.max(40, Math.min(64, Math.floor(available * listRatio)));
+  return {
+    mode: "split",
+    listWidth,
+    previewWidth: Math.max(0, available - listWidth),
+  };
+}
+
+const stripAnsi = (text: string): string => text.replace(/\x1b\[[0-9;]*m/g, "");
+
+export function visiblePlainWidth(text: string): number {
+  return Array.from(stripAnsi(text)).length;
+}
+
+export function truncatePlain(text: string, width: number, ellipsis = "…"): string {
+  if (width <= 0) return "";
+  if (visiblePlainWidth(text) <= width) return text;
+  if (width <= visiblePlainWidth(ellipsis)) return ellipsis.slice(0, width);
+  return `${Array.from(stripAnsi(text)).slice(0, width - visiblePlainWidth(ellipsis)).join("")}${ellipsis}`;
+}
+
+export function padPlainRight(text: string, width: number): string {
+  const truncated = truncatePlain(text, width, "");
+  return `${truncated}${" ".repeat(Math.max(0, width - visiblePlainWidth(truncated)))}`;
+}
+
+function previewContentToText(content: PreviewContent | undefined): string {
+  if (!content) return "";
+  if (typeof content === "string") return content;
+
+  return content
+    .map((part) => {
+      if (part.type === "text") return part.text;
+      if (part.type === "image") return `[image${part.mimeType ? `: ${part.mimeType}` : ""}]`;
+      if (part.type === "toolCall") return `[tool call: ${part.name}]`;
+      if (part.type === "thinking") {
+        if (part.redacted) return "[thinking redacted]";
+        return part.thinking ? `[thinking] ${part.thinking}` : "[thinking]";
+      }
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function previewMessageLabel(message: PreviewMessageLike): string {
+  if (message.role === "toolResult") {
+    return message.isError ? `tool error${message.toolName ? `:${message.toolName}` : ""}` : `tool${message.toolName ? `:${message.toolName}` : ""}`;
+  }
+  if (message.role === "bashExecution") return "bash";
+  if (message.role === "compactionSummary") return "summary";
+  if (message.role === "branchSummary") return "branch";
+  if (message.role === "custom") return "custom";
+  return message.role;
+}
+
+function previewMessageText(message: PreviewMessageLike): string {
+  if (message.role === "bashExecution") {
+    const command = message.command ? `$ ${message.command}` : "$";
+    return message.output ? `${command}\n${message.output}` : command;
+  }
+  if (message.summary) return message.summary;
+  return previewContentToText(message.content);
+}
+
+export function buildSessionPreview(
+  session: SessionInfoLike,
+  messages: PreviewMessageLike[],
+  options: { maxMessages?: number } = {},
+): SessionPreview {
+  const maxMessages = options.maxMessages ?? 80;
+  const lines: string[] = [];
+  const omitted = Math.max(0, messages.length - maxMessages);
+  const visibleMessages = omitted > 0 ? messages.slice(-maxMessages) : messages;
+
+  if (omitted > 0) {
+    lines.push(`... ${omitted} earlier messages omitted`);
+    lines.push("");
+  }
+
+  for (const message of visibleMessages) {
+    const label = previewMessageLabel(message);
+    const text = previewMessageText(message).replace(/\s+$/g, "");
+    if (!text.trim()) continue;
+
+    lines.push(`${label}:`);
+    for (const line of text.split(/\r?\n/)) {
+      const normalized = line.replace(/\s+/g, " ").trim();
+      if (normalized) lines.push(`  ${normalized}`);
+    }
+    lines.push("");
+  }
+
+  if (lines.at(-1) === "") lines.pop();
+
+  const messageCount = session.messageCount ?? messages.length;
+  return {
+    title: buildSessionLabel(session),
+    subtitle: `${formatTimestamp(session.modified)} · ${messageCount} messages`,
+    lines: lines.length > 0 ? lines : ["No previewable messages."],
+  };
+}
+
+export function buildPreviewError(session: SessionInfoLike, error: unknown): SessionPreview {
+  const message = error instanceof Error ? error.message : String(error);
+  return {
+    title: buildSessionLabel(session),
+    subtitle: `${formatTimestamp(session.modified)} · preview unavailable`,
+    lines: [`Failed to load preview: ${message}`],
+    error: message,
+  };
 }

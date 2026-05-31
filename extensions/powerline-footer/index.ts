@@ -1,5 +1,5 @@
-import type { ExtensionAPI, ExtensionContext, ReadonlyFooterDataProvider } from "@mariozechner/pi-coding-agent";
-import { type Component, type Theme, type TUI, truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
+import type { ExtensionAPI, ExtensionContext, ReadonlyFooterDataProvider } from "@earendil-works/pi-coding-agent";
+import { type Component, type Theme, type TUI, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import * as child_process from "child_process";
 
 class PowerlineFooter implements Component {

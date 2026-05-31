@@ -1,5 +1,5 @@
-import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
-import { DynamicBorder, SessionManager, keyHint } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import { DynamicBorder, SessionManager, keyHint } from "@earendil-works/pi-coding-agent";
 import {
   CancellableLoader,
   Container,
@@ -9,18 +9,26 @@ import {
   Spacer,
   Text,
   matchesKey,
-} from "@mariozechner/pi-tui";
+  truncateToWidth,
+  visibleWidth,
+} from "@earendil-works/pi-tui";
 import {
+  buildPreviewError,
+  buildSessionPreview,
   buildSessionDescription,
   buildSessionLabel,
   buildSessionSearchEntries,
   filterSessionEntries,
+  getSessionPaneLayout,
   parseLimit,
+  type SessionPreview,
   type SessionInfoLike,
 } from "./sessions.js";
 
-const DEFAULT_VISIBLE = 5;
+const DEFAULT_VISIBLE = 12;
 const SNIPPET_MAX = 60;
+const PREVIEW_LOAD_DEBOUNCE_MS = 50;
+const OVERLAY_FILL_LINES = 120;
 
 const isPrintable = (data: string): boolean => {
   if (data.length !== 1) return false;
@@ -35,6 +43,55 @@ const formatPlainLine = (session: SessionInfoLike): string => {
   const label = buildSessionLabel(session);
   const description = buildSessionDescription(session, SNIPPET_MAX);
   return `${label}\t${description}`;
+};
+
+const padAnsiRight = (text: string, width: number): string => {
+  const truncated = truncateToWidth(text, width, "");
+  return `${truncated}${" ".repeat(Math.max(0, width - visibleWidth(truncated)))}`;
+};
+
+const fillOverlayLines = (lines: string[], width: number): string[] => {
+  const padded = lines.map((line) => padAnsiRight(line, width));
+  while (padded.length < OVERLAY_FILL_LINES) {
+    padded.push(" ".repeat(width));
+  }
+  return padded;
+};
+
+const renderPreview = (
+  preview: SessionPreview | undefined,
+  width: number,
+  theme: { fg: (color: any, text: string) => string; bold: (text: string) => string },
+  maxLines: number,
+): string[] => {
+  const lines: string[] = [];
+  if (!preview) {
+    lines.push(theme.fg("muted", "Preview"));
+    lines.push(theme.fg("dim", "Loading selected session..."));
+  } else {
+    const title = preview.error ? theme.fg("error", preview.title) : theme.fg("accent", theme.bold(preview.title));
+    lines.push(truncateToWidth(title, width, ""));
+    lines.push(theme.fg("dim", truncateToWidth(preview.subtitle, width, "")));
+    lines.push(theme.fg("border", "─".repeat(Math.max(0, width))));
+
+    for (const line of preview.lines) {
+      const isLabel = /^[a-zA-Z][\w:-]*:$/.test(line);
+      const styled = isLabel ? theme.fg("warning", line) : theme.fg("text", line);
+      lines.push(truncateToWidth(styled, width, ""));
+    }
+  }
+
+  return lines.slice(0, maxLines).map((line) => padAnsiRight(line, width));
+};
+
+const loadSessionPreview = async (session: SessionInfoLike): Promise<SessionPreview> => {
+  try {
+    const manager = SessionManager.open(session.path);
+    const context = manager.buildSessionContext();
+    return buildSessionPreview(session, context.messages as any[]);
+  } catch (error) {
+    return buildPreviewError(session, error);
+  }
 };
 
 async function listSessions(ctx: ExtensionCommandContext): Promise<SessionInfoLike[] | null> {
@@ -113,10 +170,67 @@ async function showSessionPicker(
   const entries = buildSessionSearchEntries(sorted);
   const sessionByPath = new Map(sorted.map((session) => [session.path, session]));
 
-  return ctx.ui.custom<SessionInfoLike | null>((tui, theme, _kb, done) => {
+  return ctx.ui.custom<SessionInfoLike | null>((tui, theme, kb, done) => {
     let filter = "";
     let selectList: SelectList;
+    let filteredEntries = entries;
+    let selectedPath = sorted[0]?.path ?? "";
     const container = new Container();
+    const previewCache = new Map<string, SessionPreview>();
+    let activePreview: SessionPreview | undefined;
+    let previewTimer: ReturnType<typeof setTimeout> | undefined;
+    let previewSeq = 0;
+
+    const previewKey = (session: SessionInfoLike): string => `${session.path}:${session.modified.getTime()}`;
+
+    const setSelectedPath = (path: string | undefined) => {
+      if (!path || path === selectedPath) return;
+      selectedPath = path;
+      schedulePreviewLoad();
+    };
+
+    const schedulePreviewLoad = () => {
+      const session = sessionByPath.get(selectedPath);
+      if (!session) {
+        activePreview = undefined;
+        return;
+      }
+
+      const key = previewKey(session);
+      const cached = previewCache.get(key);
+      if (cached) {
+        activePreview = cached;
+        return;
+      }
+
+      activePreview = {
+        title: buildSessionLabel(session),
+        subtitle: `${session.modified.toLocaleString()} · loading preview`,
+        lines: ["Loading selected session..."],
+      };
+
+      if (previewTimer) clearTimeout(previewTimer);
+      const seq = ++previewSeq;
+      previewTimer = setTimeout(() => {
+        void loadSessionPreview(session).then((preview) => {
+          if (seq !== previewSeq || selectedPath !== session.path) return;
+          previewCache.set(key, preview);
+          activePreview = preview;
+          tui.requestRender();
+        });
+      }, PREVIEW_LOAD_DEBOUNCE_MS);
+    };
+
+    const moveByPage = (delta: number) => {
+      if (filteredEntries.length === 0) return;
+      const currentIndex = Math.max(
+        0,
+        filteredEntries.findIndex((entry) => entry.session.path === selectedPath),
+      );
+      const nextIndex = Math.max(0, Math.min(filteredEntries.length - 1, currentIndex + delta));
+      selectList.setSelectedIndex(nextIndex);
+      setSelectedPath(filteredEntries[nextIndex]?.session.path);
+    };
 
     const buildItems = (current: typeof entries): SelectItem[] =>
       current.map((entry) => ({
@@ -126,8 +240,8 @@ async function showSessionPicker(
       }));
 
     const rebuild = () => {
-      const filtered = filterSessionEntries(entries, filter);
-      const items = buildItems(filtered);
+      filteredEntries = filterSessionEntries(entries, filter);
+      const items = buildItems(filteredEntries);
       const visible = Math.max(1, Math.min(maxVisible, Math.max(items.length, 1)));
 
       selectList = new SelectList(items, visible, {
@@ -138,11 +252,23 @@ async function showSessionPicker(
         noMatch: () => theme.fg("warning", "  No matching sessions"),
       });
 
+      const selectedIndex = filteredEntries.findIndex((entry) => entry.session.path === selectedPath);
+      if (selectedIndex >= 0) {
+        selectList.setSelectedIndex(selectedIndex);
+      } else {
+        selectedPath = filteredEntries[0]?.session.path ?? "";
+        selectList.setSelectedIndex(0);
+        schedulePreviewLoad();
+      }
+
       selectList.onSelect = (item) => {
         const session = sessionByPath.get(item.value) ?? null;
         done(session);
       };
       selectList.onCancel = () => done(null);
+      selectList.onSelectionChange = (item) => {
+        setSelectedPath(item.value);
+      };
 
       const filterLine = filter.length
         ? `${theme.fg("muted", "Filter: ")}${theme.fg("text", filter)}`
@@ -158,9 +284,28 @@ async function showSessionPicker(
     };
 
     rebuild();
+    schedulePreviewLoad();
 
     return {
-      render: (width) => container.render(width),
+      render: (width) => {
+        const layout = getSessionPaneLayout(width);
+        if (layout.mode === "single") {
+          return fillOverlayLines(container.render(width), width);
+        }
+
+        const leftLines = container.render(layout.listWidth).map((line) => padAnsiRight(line, layout.listWidth));
+        const previewLines = renderPreview(activePreview, layout.previewWidth, theme, Math.max(leftLines.length, maxVisible + 6));
+        const height = Math.max(leftLines.length, previewLines.length);
+        const lines: string[] = [];
+
+        for (let i = 0; i < height; i++) {
+          const left = leftLines[i] ?? " ".repeat(layout.listWidth);
+          const right = previewLines[i] ?? " ".repeat(layout.previewWidth);
+          lines.push(`${left}${theme.fg("border", " │ ")}${padAnsiRight(right, layout.previewWidth)}`);
+        }
+
+        return fillOverlayLines(lines, width);
+      },
       invalidate: () => {
         rebuild();
         container.invalidate();
@@ -182,10 +327,32 @@ async function showSessionPicker(
           return;
         }
 
+        if (kb.matches(data, "tui.select.pageUp")) {
+          moveByPage(-maxVisible);
+          tui.requestRender();
+          return;
+        }
+
+        if (kb.matches(data, "tui.select.pageDown")) {
+          moveByPage(maxVisible);
+          tui.requestRender();
+          return;
+        }
+
         selectList.handleInput(data);
         tui.requestRender();
       },
     };
+  }, {
+    overlay: true,
+    overlayOptions: {
+      anchor: "top-left",
+      row: 0,
+      col: 0,
+      width: "100%",
+      maxHeight: "100%",
+      margin: 0,
+    },
   });
 }
 

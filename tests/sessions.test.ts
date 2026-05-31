@@ -1,13 +1,17 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  buildPreviewError,
+  buildSessionPreview,
   buildSessionDescription,
   buildSessionLabel,
   buildSessionSearchEntries,
   filterSessionEntries,
   filterSessionInfos,
   formatTimestamp,
+  getSessionPaneLayout,
   parseLimit,
+  visiblePlainWidth,
   type SessionInfoLike,
 } from "../extensions/sessions/sessions.js";
 
@@ -152,5 +156,106 @@ describe("filterSessionInfos", () => {
     const entries = buildSessionSearchEntries(sessions);
     const filtered = filterSessionEntries(entries, "ref work");
     assert.deepEqual(filtered.map((entry) => entry.session), [sessions[0]]);
+  });
+});
+
+describe("getSessionPaneLayout", () => {
+  it("uses a single pane on narrow terminals", () => {
+    assert.deepEqual(getSessionPaneLayout(99), {
+      mode: "single",
+      listWidth: 99,
+      previewWidth: 0,
+    });
+  });
+
+  it("uses a balanced split on medium terminals", () => {
+    assert.deepEqual(getSessionPaneLayout(120), {
+      mode: "split",
+      listWidth: 52,
+      previewWidth: 65,
+    });
+  });
+
+  it("caps the list pane on wide terminals", () => {
+    assert.deepEqual(getSessionPaneLayout(200), {
+      mode: "split",
+      listWidth: 64,
+      previewWidth: 133,
+    });
+  });
+});
+
+describe("buildSessionPreview", () => {
+  const session: SessionInfoLike = {
+    id: "abc123def456",
+    name: "Preview test",
+    cwd: "/work/app",
+    modified: new Date(2026, 1, 4, 14, 12, 0),
+    firstMessage: "hello",
+    path: "/sessions/one.jsonl",
+    messageCount: 3,
+  };
+
+  it("formats the selected thread messages in order", () => {
+    const preview = buildSessionPreview(session, [
+      { role: "user", content: "Fix the sessions picker" },
+      {
+        role: "assistant",
+        content: [
+          { type: "text", text: "I'll inspect it." },
+          { type: "toolCall", name: "read" },
+        ],
+      },
+      {
+        role: "toolResult",
+        toolName: "read",
+        content: [{ type: "text", text: "extensions/sessions/index.ts" }],
+      },
+    ]);
+
+    assert.equal(preview.title, "Preview test");
+    assert.equal(preview.subtitle, "2026-02-04 14:12 · 3 messages");
+    assert.deepEqual(preview.lines, [
+      "user:",
+      "  Fix the sessions picker",
+      "",
+      "assistant:",
+      "  I'll inspect it.",
+      "  [tool call: read]",
+      "",
+      "tool:read:",
+      "  extensions/sessions/index.ts",
+    ]);
+  });
+
+  it("truncates old messages when a preview would be too large", () => {
+    const preview = buildSessionPreview(
+      session,
+      [
+        { role: "user", content: "one" },
+        { role: "assistant", content: [{ type: "text", text: "two" }] },
+        { role: "user", content: "three" },
+      ],
+      { maxMessages: 2 },
+    );
+
+    assert.equal(preview.lines[0], "... 1 earlier messages omitted");
+    assert.ok(preview.lines.includes("  two"));
+    assert.ok(preview.lines.includes("  three"));
+  });
+
+  it("formats preview load errors", () => {
+    const preview = buildPreviewError(session, new Error("bad jsonl"));
+
+    assert.equal(preview.error, "bad jsonl");
+    assert.deepEqual(preview.lines, ["Failed to load preview: bad jsonl"]);
+  });
+
+  it("keeps preview lines measurable for terminal width checks", () => {
+    const preview = buildSessionPreview(session, [{ role: "user", content: "hello" }]);
+
+    for (const line of preview.lines) {
+      assert.ok(visiblePlainWidth(line) <= 80);
+    }
   });
 });
