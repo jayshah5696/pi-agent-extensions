@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**pi-agent-extensions** — A collection of TypeScript extensions for the [Pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent). Provides 17 extensions including session management, developer tools, UI enhancements, and provider integrations.
+**pi-agent-extensions** — A collection of TypeScript extensions for the [Pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent). Provides 16 extensions including session management, developer tools, UI enhancements, and provider integrations.
 
 ## Commands
 
@@ -26,7 +26,7 @@ extensions/
   handoff/index.ts          → registerCommand("/handoff") + session_start event handler
   powerline-footer/index.ts → session_start event handler (setFooter)
   session-breakdown/index.ts→ registerCommand("/session-breakdown")
-  ... and 12 more
+  ... and 11 more
 ```
 
 ### Shared Patterns
@@ -45,8 +45,6 @@ extensions/
 **Handoff** (`extensions/handoff/`): Uses LLM completion to extract structured context (relevant files, commands, decisions, open questions) from conversation history. Validates extracted files against actual conversation text to prevent hallucinations. Configurable via `.pi/settings.json` under `handoff` key. Supports retry logic on JSON parse failure.
 
 **BTW** (`extensions/btw/`): Registers `/btw` command for ephemeral side questions. Builds conversation context via `convertToLlm()` + `serializeConversation()`, sends a single LLM call with a read-only system prompt, and displays the answer in a dismissable TUI overlay. Nothing is persisted to the session. Uses the currently selected model. Testable logic is separated into `btw.ts`.
-
-**Nvidia NIM** (`extensions/nvidia-nim/`): Registers `/nvidia-nim-auth` and `/nvidia-nim-models` to configure API key + model list (one `org/model` per line). Persists config to `~/.pi/nvidia-nim.json`, registers provider dynamically via `pi.registerProvider()`, and updates `~/.pi/agent/settings.json` `enabledModels` so models appear in scoped `/model` and Ctrl+P cycling.
 
 **Powerline Footer** (`extensions/powerline-footer/`): Custom powerline-style footer component. Shows git branch + working tree status (staged/unstaged/untracked/ahead/behind), model name, context usage with color-coded percentage, estimated cost, session duration, Python env detection, and extension statuses. Uses async `child_process.exec` for git commands to avoid blocking render, refreshes every 10 seconds.
 
