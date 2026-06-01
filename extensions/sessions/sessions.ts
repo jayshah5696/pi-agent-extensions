@@ -3,6 +3,7 @@ export interface SessionInfoLike {
   name?: string;
   cwd: string;
   modified: Date;
+  created?: Date;
   firstMessage: string;
   path: string;
   messageCount?: number;
@@ -67,6 +68,21 @@ export function formatTimestamp(date: Date): string {
   const hours = pad(date.getHours());
   const minutes = pad(date.getMinutes());
   return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+export function formatRelativeTime(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffSec < 60) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHour < 24) return `${diffHour}h ago`;
+  if (diffDay === 1) return "Yesterday";
+  return `${diffDay}d ago`;
 }
 
 export function buildSessionLabel(session: SessionInfoLike): string {

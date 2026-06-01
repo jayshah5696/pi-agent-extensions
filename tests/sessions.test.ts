@@ -9,6 +9,7 @@ import {
   filterSessionEntries,
   filterSessionInfos,
   formatTimestamp,
+  formatRelativeTime,
   getSessionPaneLayout,
   parseLimit,
   type SessionInfoLike,
@@ -34,6 +35,32 @@ describe("formatTimestamp", () => {
   it("formats to YYYY-MM-DD HH:mm", () => {
     const date = new Date(2026, 1, 4, 14, 12, 0);
     assert.equal(formatTimestamp(date), "2026-02-04 14:12");
+  });
+});
+
+describe("formatRelativeTime", () => {
+  it("formats dates relative to now", () => {
+    const now = new Date();
+    
+    // Just now (<60s)
+    const justNowDate = new Date(now.getTime() - 10 * 1000);
+    assert.equal(formatRelativeTime(justNowDate), "Just now");
+
+    // Minutes ago (<60m)
+    const minsAgoDate = new Date(now.getTime() - 15 * 60 * 1000);
+    assert.equal(formatRelativeTime(minsAgoDate), "15m ago");
+
+    // Hours ago (<24h)
+    const hoursAgoDate = new Date(now.getTime() - 3 * 3600 * 1000);
+    assert.equal(formatRelativeTime(hoursAgoDate), "3h ago");
+
+    // Yesterday (1d)
+    const yesterdayDate = new Date(now.getTime() - 25 * 3600 * 1000);
+    assert.equal(formatRelativeTime(yesterdayDate), "Yesterday");
+
+    // Days ago (>1d)
+    const daysAgoDate = new Date(now.getTime() - 4 * 24 * 3600 * 1000);
+    assert.equal(formatRelativeTime(daysAgoDate), "4d ago");
   });
 });
 

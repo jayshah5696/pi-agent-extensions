@@ -1,5 +1,5 @@
-import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
-import { DynamicBorder, SessionManager, keyHint } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import { DynamicBorder, SessionManager, keyHint } from "@earendil-works/pi-coding-agent";
 import {
   CancellableLoader,
   Container,
@@ -12,7 +12,7 @@ import {
   truncateToWidth,
   visibleWidth,
   wrapTextWithAnsi,
-} from "@mariozechner/pi-tui";
+} from "@earendil-works/pi-tui";
 import {
   buildPreviewError,
   buildSessionDescription,
@@ -25,7 +25,9 @@ import {
   type PreviewBlock,
   type SessionInfoLike,
   type SessionPreview,
+  formatRelativeTime,
 } from "./sessions.js";
+import * as child_process from "child_process";
 
 const DEFAULT_VISIBLE = 12;
 const SNIPPET_MAX = 60;
@@ -197,6 +199,107 @@ const renderPreviewBlock = (
   return renderTextBlock(`◇ ${block.label}`, block.text, width, theme, "muted");
 };
 
+interface SessionStats {
+  add: number;
+  mod: number;
+  del: number;
+}
+
+const statsCache = new Map<string, SessionStats>();
+const statsLoading = new Set<string>();
+
+const execCmd = (cmd: string, cwd: string): Promise<string> => {
+  return new Promise((resolve) => {
+    child_process.exec(cmd, { cwd, encoding: "utf8" }, (err, stdout) => {
+      resolve(err ? "" : stdout);
+    });
+  });
+};
+
+const loadSessionStats = (session: SessionInfoLike, isLatestForCwd: boolean, tui: any) => {
+  const key = session.path;
+  if (statsCache.has(key) || statsLoading.has(key)) return;
+
+  statsLoading.add(key);
+
+  const after = session.created ? session.created.toISOString() : new Date(session.modified.getTime() - 24 * 3600 * 1000).toISOString();
+  const before = session.modified.toISOString();
+  const logCmd = `git log --after="${after}" --before="${before}" --numstat --pretty=format:`;
+  const diffCmd = isLatestForCwd ? `git diff --numstat` : ``;
+
+  Promise.all([
+    execCmd(logCmd, session.cwd),
+    diffCmd ? execCmd(diffCmd, session.cwd) : Promise.resolve("")
+  ]).then(([logOut, diffOut]) => {
+    let added = 0;
+    let deleted = 0;
+    const parseOut = (out: string) => {
+      const lines = out.split("\n");
+      for (const line of lines) {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 2) {
+          const a = parseInt(parts[0], 10);
+          const d = parseInt(parts[1], 10);
+          if (!isNaN(a)) added += a;
+          if (!isNaN(d)) deleted += d;
+        }
+      }
+    };
+    parseOut(logOut);
+    parseOut(diffOut);
+
+    const mod = Math.min(added, deleted);
+    const add = added - mod;
+    const del = deleted - mod;
+
+    statsCache.set(key, { add, mod, del });
+    statsLoading.delete(key);
+    tui.requestRender();
+  });
+};
+
+const formatItemLabel = (
+  session: SessionInfoLike,
+  width: number,
+  theme: any,
+  statsCache: Map<string, SessionStats>
+): string => {
+  const itemWidth = width - 4;
+  const timeStr = formatRelativeTime(session.modified);
+
+  const stats = statsCache.get(session.path);
+  let statsStr = "";
+  let statsLen = 0;
+  if (stats && (stats.add > 0 || stats.mod > 0 || stats.del > 0)) {
+    const parts = [];
+    if (stats.add > 0) parts.push(theme.fg("success", `+${stats.add}`));
+    if (stats.mod > 0) parts.push(theme.fg("warning", `~${stats.mod}`));
+    if (stats.del > 0) parts.push(theme.fg("error", `-${stats.del}`));
+    statsStr = parts.join(" ");
+    statsLen = (stats.add > 0 ? `${stats.add}`.length + 1 : 0) +
+               (stats.mod > 0 ? `${stats.mod}`.length + 1 : 0) +
+               (stats.del > 0 ? `${stats.del}`.length + 1 : 0) +
+               parts.length - 1;
+  }
+
+  const title = buildSessionLabel(session);
+  const reserved = 1 + timeStr.length + (statsLen > 0 ? statsLen + 2 : 0);
+  const titleWidth = Math.max(5, itemWidth - reserved);
+  const truncatedTitle = truncateToWidth(title, titleWidth, "…");
+
+  const visibleTitleLen = visibleWidth(truncatedTitle);
+  const paddingSize = itemWidth - visibleTitleLen - (statsLen > 0 ? statsLen : 0) - timeStr.length;
+
+  if (statsStr) {
+    const pad1 = " ".repeat(Math.max(1, paddingSize - 2));
+    const pad2 = "  ";
+    return `${truncatedTitle}${pad1}${statsStr}${pad2}${theme.fg("dim", timeStr)}`;
+  } else {
+    const padding = " ".repeat(Math.max(1, paddingSize));
+    return `${truncatedTitle}${padding}${theme.fg("dim", timeStr)}`;
+  }
+};
+
 const renderPreview = (
   preview: SessionPreview | undefined,
   width: number,
@@ -204,15 +307,23 @@ const renderPreview = (
   scrollOffset: number,
   theme: { fg: (color: any, text: string) => string; bold: (text: string) => string; italic?: (text: string) => string },
   options: PreviewRenderOptions,
+  focus: "list" | "preview"
 ): { lines: string[]; totalLines: number; maxScroll: number } => {
   const raw: string[] = [];
 
   if (!preview) {
-    raw.push(themeText(theme, "title", "Preview"));
-    raw.push(themeText(theme, "subtitle", "Loading selected session…"));
+    raw.push(" ".repeat(Math.max(0, Math.floor((width - 7) / 2))) + themeText(theme, "title", "Preview"));
+    raw.push(" ".repeat(Math.max(0, Math.floor((width - 25) / 2))) + themeText(theme, "subtitle", "Loading selected session…"));
   } else {
-    raw.push(themeText(theme, preview.error ? "error" : "title", preview.title));
-    raw.push(themeText(theme, "subtitle", preview.subtitle));
+    const titleStr = "Thread Preview";
+    const titleColor = focus === "preview" ? themeText(theme, "title", titleStr) : themeText(theme, "subtitle", titleStr);
+    const titlePadding = " ".repeat(Math.max(0, Math.floor((width - titleStr.length) / 2)));
+    raw.push(`${titlePadding}${titleColor}`);
+
+    const subStr = preview.subtitle;
+    const subPadding = " ".repeat(Math.max(0, Math.floor((width - visibleWidth(subStr)) / 2)));
+    raw.push(`${subPadding}${themeText(theme, "subtitle", subStr)}`);
+
     raw.push(themeText(theme, "rule", "─".repeat(Math.max(0, width))));
 
     for (let i = 0; i < preview.blocks.length; i++) {
@@ -236,8 +347,31 @@ const renderPreview = (
 
   const maxScroll = Math.max(0, raw.length - height);
   const boundedOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
-  const visible = raw.slice(boundedOffset, boundedOffset + height).map((line) => padAnsiRight(line, width));
-  while (visible.length < height) visible.push(" ".repeat(width));
+  
+  // Render scrollbar on the right border
+  const visible: string[] = [];
+  const thumbSize = Math.max(1, Math.min(height, Math.round((height / raw.length) * height)));
+  const thumbStart = maxScroll > 0
+    ? Math.max(0, Math.min(height - thumbSize, Math.round((boundedOffset / maxScroll) * (height - thumbSize))))
+    : 0;
+
+  for (let i = 0; i < height; i++) {
+    const lineIndex = boundedOffset + i;
+    const line = lineIndex < raw.length ? raw[lineIndex]! : "";
+    
+    let scrollChar = "";
+    if (maxScroll > 0) {
+      if (i >= thumbStart && i < thumbStart + thumbSize) {
+        scrollChar = theme.fg("text", "█");
+      } else {
+        scrollChar = theme.fg("border", "│");
+      }
+    } else {
+      scrollChar = theme.fg("border", "│");
+    }
+
+    visible.push(padAnsiRight(line, width - 1) + scrollChar);
+  }
 
   return { lines: visible, totalLines: raw.length, maxScroll };
 };
@@ -324,8 +458,8 @@ async function showSessionPicker(
   sessions: SessionInfoLike[],
   maxVisible: number,
 ): Promise<SessionInfoLike | null> {
-  const sorted = sessions;
-  const entries = buildSessionSearchEntries(sorted);
+  let sorted = sessions;
+  let entries = buildSessionSearchEntries(sorted);
   const sessionByPath = new Map(sorted.map((session) => [session.path, session]));
 
   return ctx.ui.custom<SessionInfoLike | null>((tui, theme, kb, done) => {
@@ -341,7 +475,67 @@ async function showSessionPicker(
     let previewTimer: ReturnType<typeof setTimeout> | undefined;
     let previewSeq = 0;
 
+    let focus: "list" | "preview" = "list";
+    let showAllWorkspaces = false;
+    let isLoading = false;
+
     const previewKey = (session: SessionInfoLike): string => `${session.path}:${session.modified.getTime()}`;
+
+    // Group by CWD to find latest session per CWD
+    const getLatestSessionMap = (list: SessionInfoLike[]) => {
+      const latestMap = new Map<string, string>();
+      for (const s of list) {
+        if (!latestMap.has(s.cwd)) {
+          latestMap.set(s.cwd, s.path);
+        }
+      }
+      return latestMap;
+    };
+
+    const triggerStatsLoad = (list: SessionInfoLike[]) => {
+      const latestMap = getLatestSessionMap(list);
+      for (const s of list) {
+        const isLatest = latestMap.get(s.cwd) === s.path;
+        loadSessionStats(s, isLatest, tui);
+      }
+    };
+
+    // Initial stats load
+    triggerStatsLoad(sorted);
+
+    const loadWorkspaceSessions = async (allWorkspaces: boolean) => {
+      isLoading = true;
+      tui.requestRender();
+      try {
+        let results: SessionInfoLike[];
+        if (allWorkspaces) {
+          results = await SessionManager.listAll();
+        } else {
+          results = await SessionManager.list(ctx.cwd);
+        }
+        sorted = sortSessions(results);
+        for (const s of sorted) {
+          sessionByPath.set(s.path, s);
+        }
+        entries = buildSessionSearchEntries(sorted);
+        triggerStatsLoad(sorted);
+
+        filteredEntries = filterSessionEntries(entries, filter);
+        const matchedIndex = filteredEntries.findIndex((entry) => entry.session.path === selectedPath);
+        if (matchedIndex >= 0) {
+          // Keep selection
+        } else {
+          selectedPath = filteredEntries[0]?.session.path ?? "";
+        }
+        rebuild();
+        schedulePreviewLoad();
+      } catch (error) {
+        ctx.ui.notify(`Failed to load sessions: ${error instanceof Error ? error.message : error}`, "error");
+      } finally {
+        isLoading = false;
+        tui.requestRender();
+      }
+    };
 
     const schedulePreviewLoad = () => {
       previewScrollOffset = 0;
@@ -382,41 +576,21 @@ async function showSessionPicker(
       schedulePreviewLoad();
     };
 
-    const buildItems = (current: typeof entries): SelectItem[] =>
+    const buildItems = (current: typeof entries, listWidth: number): SelectItem[] =>
       current.map((entry) => ({
         value: entry.session.path,
-        label: buildSessionLabel(entry.session),
-        description: buildSessionDescription(entry.session, SNIPPET_MAX),
+        label: formatItemLabel(entry.session, listWidth, theme, statsCache),
       }));
 
     const rebuild = () => {
       filteredEntries = filterSessionEntries(entries, filter);
-      const items = buildItems(filteredEntries);
-      const visible = Math.max(1, Math.min(maxVisible, Math.max(items.length, 1)));
-
-      selectList = new SelectList(items, visible, {
-        selectedPrefix: (text) => theme.fg("accent", text),
-        selectedText: (text) => theme.fg("accent", text),
-        description: (text) => theme.fg("muted", text),
-        scrollInfo: (text) => theme.fg("dim", text),
-        noMatch: () => theme.fg("warning", "  No matching sessions"),
-      });
-
-      const selectedIndex = filteredEntries.findIndex((entry) => entry.session.path === selectedPath);
-      if (selectedIndex >= 0) {
-        selectList.setSelectedIndex(selectedIndex);
+      const matchedIndex = filteredEntries.findIndex((entry) => entry.session.path === selectedPath);
+      if (matchedIndex >= 0) {
+        // Keep selection
       } else {
         selectedPath = filteredEntries[0]?.session.path ?? "";
-        selectList.setSelectedIndex(0);
         schedulePreviewLoad();
       }
-
-      selectList.onSelect = (item) => {
-        const session = sessionByPath.get(item.value) ?? null;
-        done(session);
-      };
-      selectList.onCancel = () => done(null);
-      selectList.onSelectionChange = (item) => setSelectedPath(item.value);
     };
 
     const renderSinglePane = (width: number): string[] => {
@@ -428,25 +602,42 @@ async function showSessionPicker(
       container.addChild(new DynamicBorder((text: string) => theme.fg("accent", text)));
       container.addChild(new Text(theme.fg("accent", theme.bold("Sessions")), 1, 0));
       container.addChild(new Text(filterLine, 1, 0));
-      container.addChild(selectList);
+      if (isLoading) {
+        container.addChild(new Spacer(1));
+        container.addChild(new Text(theme.fg("muted", "  Loading sessions..."), 1, 0));
+        container.addChild(new Spacer(1));
+      } else {
+        const items = buildItems(filteredEntries, width);
+        selectList = new SelectList(items, Math.max(1, Math.min(maxVisible, Math.max(items.length, 1))), {
+          selectedPrefix: (text) => theme.fg(focus === "list" ? "accent" : "muted", text),
+          selectedText: (text) => theme.fg(focus === "list" ? "accent" : "muted", text),
+          description: (text) => theme.fg("muted", text),
+          scrollInfo: (text) => theme.fg("dim", text),
+          noMatch: () => theme.fg("warning", "  No matching sessions"),
+        });
+        const selectedIndex = filteredEntries.findIndex((entry) => entry.session.path === selectedPath);
+        selectList.setSelectedIndex(selectedIndex >= 0 ? selectedIndex : 0);
+        selectList.onSelect = (item) => done(sessionByPath.get(item.value) ?? null);
+        selectList.onCancel = () => done(null);
+        selectList.onSelectionChange = (item) => setSelectedPath(item.value);
+        container.addChild(selectList);
+      }
       container.addChild(new Text(theme.fg("dim", "↑↓ navigate • enter open • esc cancel"), 1, 0));
       container.addChild(new DynamicBorder((text: string) => theme.fg("accent", text)));
       return container.render(width);
     };
 
     const buildTopBorder = (listWidth: number, previewWidth: number): string => {
-      const leftTitle = " Sessions ";
-      const rightTitle = " Preview ";
+      const leftTitle = " Switch Thread ";
       const left = `┌─${leftTitle}${"─".repeat(Math.max(0, listWidth - leftTitle.length - 2))}`;
-      const right = `${rightTitle}${"─".repeat(Math.max(0, previewWidth - rightTitle.length - 1))}┐`;
+      const right = "─".repeat(Math.max(0, previewWidth - 1)) + "┐";
       return `${theme.fg("border", left)}${theme.fg("border", "─┬─")}${theme.fg("border", right)}`;
     };
 
     const buildBottomBorder = (listWidth: number, previewWidth: number, previewStats: string): string => {
-      const leftHelp = " ↑↓ list • type filter ";
-      const rightHelp = previewStats || " pgup/pgdn preview • esc cancel • enter open ";
-      const left = `└─${leftHelp}${"─".repeat(Math.max(0, listWidth - leftHelp.length - 2))}`;
-      const right = `${rightHelp}${"─".repeat(Math.max(0, previewWidth - rightHelp.length - 1))}┘`;
+      const help = showAllWorkspaces ? " Opt+W/Ctrl+T current workspace  ·  Esc close " : " Opt+W/Ctrl+T all workspaces  ·  Esc close ";
+      const left = `└${"─".repeat(Math.max(0, listWidth - 1))}`;
+      const right = `${"─".repeat(Math.max(0, previewWidth - help.length - 1))}${help}┘`;
       return `${theme.fg("border", left)}${theme.fg("border", "─┴─")}${theme.fg("border", right)}`;
     };
 
@@ -459,28 +650,35 @@ async function showSessionPicker(
         : `${theme.fg("muted", "Filter: ")}${theme.fg("dim", "type to filter")}`;
       const listHeight = Math.max(1, contentHeight - 1);
 
-      // SelectList height is fixed at creation time; recreate it to use the current full-window height.
-      const items = buildItems(filteredEntries);
-      selectList = new SelectList(items, Math.max(listHeight, Math.min(maxVisible, Math.max(items.length, 1))), {
-        selectedPrefix: (text) => theme.fg("accent", text),
-        selectedText: (text) => theme.fg("accent", text),
-        description: (text) => theme.fg("muted", text),
-        scrollInfo: (text) => theme.fg("dim", text),
-        noMatch: () => theme.fg("warning", "  No matching sessions"),
-      });
-      const selectedIndex = filteredEntries.findIndex((entry) => entry.session.path === selectedPath);
-      selectList.setSelectedIndex(selectedIndex >= 0 ? selectedIndex : 0);
-      selectList.onSelect = (item) => done(sessionByPath.get(item.value) ?? null);
-      selectList.onCancel = () => done(null);
-      selectList.onSelectionChange = (item) => setSelectedPath(item.value);
+      let leftLines: string[] = [];
+      if (isLoading) {
+        leftLines.push(filterLine);
+        leftLines.push("");
+        leftLines.push(theme.fg("muted", "  Loading sessions..."));
+      } else {
+        const items = buildItems(filteredEntries, layout.listWidth);
+        selectList = new SelectList(items, Math.max(listHeight, Math.min(maxVisible, Math.max(items.length, 1))), {
+          selectedPrefix: (text) => theme.fg(focus === "list" ? "accent" : "muted", text),
+          selectedText: (text) => theme.fg(focus === "list" ? "accent" : "muted", text),
+          description: (text) => theme.fg("muted", text),
+          scrollInfo: (text) => theme.fg("dim", text),
+          noMatch: () => theme.fg("warning", "  No matching sessions"),
+        });
+        const selectedIndex = filteredEntries.findIndex((entry) => entry.session.path === selectedPath);
+        selectList.setSelectedIndex(selectedIndex >= 0 ? selectedIndex : 0);
+        selectList.onSelect = (item) => done(sessionByPath.get(item.value) ?? null);
+        selectList.onCancel = () => done(null);
+        selectList.onSelectionChange = (item) => setSelectedPath(item.value);
 
-      const leftLines = [filterLine, ...selectList.render(layout.listWidth)].slice(0, contentHeight);
+        leftLines = [filterLine, ...selectList.render(layout.listWidth)].slice(0, contentHeight);
+      }
+
       while (leftLines.length < contentHeight) leftLines.push("");
 
       const renderedPreview = renderPreview(activePreview, layout.previewWidth, contentHeight, previewScrollOffset, theme, {
         toolsExpanded,
         thinkingVisible,
-      });
+      }, focus);
       previewScrollOffset = Math.min(previewScrollOffset, renderedPreview.maxScroll);
       const modeHints = `t ${toolsExpanded ? "compact" : "tools"} • h ${thinkingVisible ? "hide thinking" : "thinking"}`;
       const previewStats = renderedPreview.maxScroll > 0
@@ -491,7 +689,7 @@ async function showSessionPicker(
       for (let i = 0; i < contentHeight; i++) {
         const left = padAnsiRight(leftLines[i] ?? "", layout.listWidth);
         const right = renderedPreview.lines[i] ?? " ".repeat(layout.previewWidth);
-        lines.push(`${left}${theme.fg("border", " │ ")}${padAnsiRight(right, layout.previewWidth)}`);
+        lines.push(`${left}${theme.fg("border", " │ ")}${right}`);
       }
       lines.push(buildBottomBorder(layout.listWidth, layout.previewWidth, previewStats));
       return lines.map((line) => truncateToWidth(line, width, "", true));
@@ -511,6 +709,34 @@ async function showSessionPicker(
         rebuild();
       },
       handleInput: (data) => {
+        if (data === "\u0014" || data === "\u001bw") {
+          showAllWorkspaces = !showAllWorkspaces;
+          void loadWorkspaceSessions(showAllWorkspaces);
+          return;
+        }
+
+        if (data === "\t") {
+          focus = focus === "list" ? "preview" : "list";
+          tui.requestRender();
+          return;
+        }
+        if (matchesKey(data, Key.left)) {
+          if (focus === "preview") {
+            focus = "list";
+            tui.requestRender();
+          }
+          return;
+        }
+        if (matchesKey(data, Key.right)) {
+          if (focus === "list") {
+            focus = "preview";
+            tui.requestRender();
+          }
+          return;
+        }
+
+        if (isLoading) return;
+
         if (matchesKey(data, Key.backspace) || matchesKey(data, Key.delete)) {
           if (filter.length > 0) {
             filter = filter.slice(0, -1);
@@ -535,46 +761,60 @@ async function showSessionPicker(
             return;
           }
 
-          const pageSize = Math.max(4, (tui.terminal?.rows ?? 24) - 4);
-          if (matchesKey(data, Key.pageDown) || matchesKey(data, Key.ctrl("d"))) {
-            previewScrollOffset += pageSize;
+          if (focus === "preview") {
+            const pageSize = Math.max(4, (tui.terminal?.rows ?? 24) - 4);
+            if (matchesKey(data, Key.pageDown) || matchesKey(data, Key.ctrl("d"))) {
+              previewScrollOffset += pageSize;
+              tui.requestRender();
+              return;
+            }
+            if (matchesKey(data, Key.pageUp) || matchesKey(data, Key.ctrl("u"))) {
+              previewScrollOffset = Math.max(0, previewScrollOffset - pageSize);
+              tui.requestRender();
+              return;
+            }
+            if (matchesKey(data, Key.down) || matchesKey(data, Key.ctrl("j"))) {
+              previewScrollOffset++;
+              tui.requestRender();
+              return;
+            }
+            if (matchesKey(data, Key.up) || matchesKey(data, Key.ctrl("k"))) {
+              previewScrollOffset = Math.max(0, previewScrollOffset - 1);
+              tui.requestRender();
+              return;
+            }
+          }
+        }
+
+        if (focus === "list") {
+          if (isPrintable(data)) {
+            filter += data;
+            rebuild();
             tui.requestRender();
             return;
           }
-          if (matchesKey(data, Key.pageUp) || matchesKey(data, Key.ctrl("u"))) {
-            previewScrollOffset = Math.max(0, previewScrollOffset - pageSize);
+
+          if (kb.matches(data, "tui.select.pageUp")) {
+            const currentIndex = Math.max(0, filteredEntries.findIndex((entry) => entry.session.path === selectedPath));
+            const nextIndex = Math.max(0, currentIndex - maxVisible);
+            selectList.setSelectedIndex(nextIndex);
+            setSelectedPath(filteredEntries[nextIndex]?.session.path);
             tui.requestRender();
             return;
           }
-        }
 
-        if (isPrintable(data)) {
-          filter += data;
-          rebuild();
+          if (kb.matches(data, "tui.select.pageDown")) {
+            const currentIndex = Math.max(0, filteredEntries.findIndex((entry) => entry.session.path === selectedPath));
+            const nextIndex = Math.min(filteredEntries.length - 1, currentIndex + maxVisible);
+            selectList.setSelectedIndex(nextIndex);
+            setSelectedPath(filteredEntries[nextIndex]?.session.path);
+            tui.requestRender();
+            return;
+          }
+
+          selectList.handleInput(data);
           tui.requestRender();
-          return;
         }
-
-        if (kb.matches(data, "tui.select.pageUp")) {
-          const currentIndex = Math.max(0, filteredEntries.findIndex((entry) => entry.session.path === selectedPath));
-          const nextIndex = Math.max(0, currentIndex - maxVisible);
-          selectList.setSelectedIndex(nextIndex);
-          setSelectedPath(filteredEntries[nextIndex]?.session.path);
-          tui.requestRender();
-          return;
-        }
-
-        if (kb.matches(data, "tui.select.pageDown")) {
-          const currentIndex = Math.max(0, filteredEntries.findIndex((entry) => entry.session.path === selectedPath));
-          const nextIndex = Math.min(filteredEntries.length - 1, currentIndex + maxVisible);
-          selectList.setSelectedIndex(nextIndex);
-          setSelectedPath(filteredEntries[nextIndex]?.session.path);
-          tui.requestRender();
-          return;
-        }
-
-        selectList.handleInput(data);
-        tui.requestRender();
       },
     };
   }, {

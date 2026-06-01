@@ -17,16 +17,16 @@
  * - Zero context cost — no tokens wasted on history
  */
 
-import { complete, type UserMessage } from "@mariozechner/pi-ai";
+import { complete, type UserMessage } from "@earendil-works/pi-ai";
 import type {
   ExtensionAPI,
   ExtensionCommandContext,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import {
   BorderedLoader,
   convertToLlm,
   serializeConversation,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import {
   type Component,
   Key,
@@ -34,7 +34,7 @@ import {
   wrapTextWithAnsi,
   visibleWidth,
   type TUI,
-} from "@mariozechner/pi-tui";
+} from "@earendil-works/pi-tui";
 
 import { getRequestAuth } from "../shared/auth.js";
 import {

@@ -1,4 +1,4 @@
-import type { Api, Model, ProviderStreamOptions } from "@mariozechner/pi-ai";
+import type { Api, Model, ProviderStreamOptions } from "@earendil-works/pi-ai";
 
 export type RequestAuth = Pick<ProviderStreamOptions, "apiKey" | "headers">;
 
