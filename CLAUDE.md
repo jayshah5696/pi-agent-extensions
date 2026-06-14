@@ -58,9 +58,9 @@ extensions/
 
 ### Peer Dependencies (provided by Pi runtime)
 
-- `@mariozechner/pi-coding-agent` — Extension API, session management
-- `@mariozechner/pi-ai` — LLM completion interface
-- `@mariozechner/pi-tui` — Terminal UI components (Editor, SelectList, Container, Border)
+- `@earendil-works/pi-coding-agent` — Extension API, session management
+- `@earendil-works/pi-ai` — LLM completion interface
+- `@earendil-works/pi-tui` — Terminal UI components (Editor, SelectList, Container, Border)
 
 ## Testing
 
