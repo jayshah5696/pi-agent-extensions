@@ -11,7 +11,7 @@
  *   /handoff add unit tests for the parser module
  */
 
-import { complete, getModel, type Message, type Model } from "@earendil-works/pi-ai";
+import { complete, getModel, type Message, type Model } from "@earendil-works/pi-ai/compat";
 import type {
   ExtensionAPI,
   ExtensionCommandContext,

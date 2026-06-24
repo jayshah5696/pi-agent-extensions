@@ -37,9 +37,9 @@
 
 import type { ExtensionAPI, ExtensionContext, TurnEndEvent, MessageRenderer } from "@earendil-works/pi-coding-agent";
 import { getMarkdownTheme } from "@earendil-works/pi-coding-agent";
-import { complete, type Model, type Api, type UserMessage, type TextContent } from "@earendil-works/pi-ai";
+import { complete, type Model, type Api, type UserMessage, type TextContent } from "@earendil-works/pi-ai/compat";
 import { getRequestAuth, hasRequestAuth } from "../shared/auth.js";
-import { StringEnum } from "@earendil-works/pi-ai";
+import { StringEnum } from "@earendil-works/pi-ai/compat";
 import { Box, Container, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
 import { Type } from "@sinclair/typebox";
 import crypto from "node:crypto";

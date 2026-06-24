@@ -17,7 +17,7 @@
  * - Zero context cost — no tokens wasted on history
  */
 
-import { complete, type UserMessage } from "@earendil-works/pi-ai";
+import { complete, type UserMessage } from "@earendil-works/pi-ai/compat";
 import type {
   ExtensionAPI,
   ExtensionCommandContext,
