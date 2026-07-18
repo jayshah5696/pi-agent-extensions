@@ -167,6 +167,8 @@ interface AgentCallOptions {
   disallowedTools?: string[];
 }
 
+type WorkflowAgentHandle = ((task: string, options?: AgentCallOptions) => Promise<unknown>) & PromiseLike<unknown>;
+
 interface AgentRunResult {
   output: string;
   model: string;
@@ -490,7 +492,7 @@ export function createWorkflowTool(options: { cwd?: string; manager: WorkflowMan
     promptGuidelines: [
       "Use workflow only when the user explicitly asks for a workflow, fan-out, or multi-agent orchestration.",
       "Pass raw JavaScript in script, beginning with export const meta = { name, description, phases: [{ title: 'Inspect' }] }.",
-      "Available globals are agent(prompt, opts), parallel(thunks), pipeline(items, ...stages), phase(title), log(message), retry(thunk, { attempts }), gate(thunk, validator, { attempts }), checkpoint(question), budget, args, and cwd.",
+      "Available globals are agent(prompt, opts), agent(persona, opts)(task), parallel(thunks), pipeline(items, ...stages), phase(title, optionalCallback), log(message), retry(thunk, { attempts }), gate(thunk, validator, { attempts }), checkpoint(question), budget, args, and cwd.",
       "parallel() receives functions, not promises: await parallel(items.map(item => () => agent(...))).",
       "Every agent needs a unique short label and a semantic opts.tier. End with one synthesizer agent and return a compact JSON-serializable result.",
       "Do not use imports, require, process, filesystem APIs, Date.now, Math.random, or new Date in workflow JavaScript.",
@@ -583,8 +585,12 @@ export function parseWorkflowScript(script: string): { meta: WorkflowMeta; body:
     });
   }
   const remaining = program.body.slice(1);
-  const defaultRun = remaining.length === 1 ? remaining[0] : undefined;
-  const runDeclaration = defaultRun?.type === "ExportDefaultDeclaration" ? defaultRun.declaration : undefined;
+  const onlyStatement = remaining.length === 1 ? remaining[0] : undefined;
+  const runDeclaration = onlyStatement?.type === "ExportDefaultDeclaration"
+    ? onlyStatement.declaration
+    : onlyStatement?.type === "FunctionDeclaration" && onlyStatement.id?.name === "run"
+      ? onlyStatement
+      : undefined;
   const runBody =
     (runDeclaration?.type === "FunctionDeclaration" || runDeclaration?.type === "FunctionExpression") &&
     runDeclaration.body?.type === "BlockStatement"
@@ -592,18 +598,27 @@ export function parseWorkflowScript(script: string): { meta: WorkflowMeta; body:
       : runDeclaration?.type === "ArrowFunctionExpression" && runDeclaration.body?.type === "BlockStatement"
         ? runDeclaration.body
         : undefined;
+  const trailing = remaining.at(-1);
+  const callsRun = trailing?.type === "ExpressionStatement"
+    && trailing.expression?.type === "CallExpression"
+    && trailing.expression.callee?.type === "Identifier"
+    && trailing.expression.callee.name === "run"
+    && trailing.expression.arguments?.length === 0;
+  const topLevelBody = callsRun
+    ? `${script.slice(first.end, trailing.start)}return await run();${script.slice(trailing.end)}`
+    : `${script.slice(0, first.start)}${script.slice(first.end)}`;
   return {
     meta: { name: meta.name.trim(), description: meta.description.trim(), phases },
     body: runBody
       ? script.slice(runBody.start + 1, runBody.end - 1)
-      : `${script.slice(0, first.start)}${script.slice(first.end)}`,
+      : topLevelBody,
   };
 }
 
 export function buildForcedWorkflowPrompt(prompt: string, directive?: string): string {
   return [
     "The user explicitly requested a dynamic workflow. You must call the workflow tool exactly once.",
-    "Design the JavaScript orchestration, then pass it as the tool's script argument. Metadata phases must use [{ title: 'Phase name' }]. Write orchestration as top-level statements or an export default async function run(). Do not perform the task with ordinary tools in this parent turn.",
+    "Design the JavaScript orchestration, then pass it as the tool's script argument. Metadata phases must use [{ title: 'Phase name' }]. Prefer top-level orchestration with phase('Name'); then await agent('complete task prompt', { label: 'name', tier: 'scout' }). agent() may also define a reusable persona that is later called with a task, and phase('Name', async () => ...) is accepted. If using a run() function, export it as default or finish with await run(). Do not perform the task with ordinary tools in this parent turn.",
     directive ?? "",
     "User request:",
     prompt,
@@ -685,7 +700,7 @@ async function executeWorkflow(script: string, args: unknown, options: ExecuteOp
     options.onProgress?.(structuredClone(snapshot));
   };
 
-  const agent = async (prompt: string, callOptions: AgentCallOptions = {}): Promise<unknown> => {
+  const spawnAgent = async (prompt: string, callOptions: AgentCallOptions = {}): Promise<unknown> => {
     if (options.signal.aborted) throw abortError(options.signal.reason);
     const index = callIndex++;
     if (index >= maxAgents) throw new Error(`Workflow exceeded its ${maxAgents}-agent cap.`);
@@ -757,6 +772,17 @@ async function executeWorkflow(script: string, args: unknown, options: ExecuteOp
     });
   };
 
+  const agent = (prompt: string, callOptions: AgentCallOptions = {}): WorkflowAgentHandle => {
+    let direct: Promise<unknown> | undefined;
+    const handle = ((task: string, overrides: AgentCallOptions = {}) =>
+      spawnAgent(`${prompt}\n\nTask:\n${String(task)}`, { ...callOptions, ...overrides })) as WorkflowAgentHandle;
+    handle.then = (onfulfilled, onrejected) => {
+      direct ??= spawnAgent(prompt, callOptions);
+      return direct.then(onfulfilled, onrejected);
+    };
+    return handle;
+  };
+
   const parallel = async (thunks: Array<() => Promise<unknown>>): Promise<unknown[]> => Promise.all(thunks.map((fn) => fn()));
   const pipeline = async (items: unknown[], ...stages: Array<(value: unknown, original: unknown, index: number) => unknown>) =>
     Promise.all(
@@ -766,11 +792,12 @@ async function executeWorkflow(script: string, args: unknown, options: ExecuteOp
         return value;
       }),
     );
-  const phase = (title: string) => {
+  const phase = <T>(title: string, operation?: () => T | Promise<T>): T | Promise<T> | undefined => {
     currentPhase = title;
     snapshot.currentPhase = title;
     snapshot.logs.push(`phase: ${title}`);
     update();
+    return typeof operation === "function" ? operation() : undefined;
   };
   const log = (message: unknown) => {
     snapshot.logs.push(String(message));

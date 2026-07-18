@@ -64,6 +64,64 @@ export default async function run() {
     assert.equal(JSON.stringify(result.result), JSON.stringify({ finding: "done:inspect" }));
   });
 
+  it("executes the generated agent-factory and phase-callback form from a plain run function", async () => {
+    const root = mkdtempSync(join(tmpdir(), "workflow-factory-"));
+    roots.push(root);
+    const prompts: string[] = [];
+    const manager = new WorkflowManager({
+      cwd: root,
+      runsDir: join(root, "runs"),
+      agent: async (prompt) => {
+        prompts.push(prompt);
+        return { output: `done:${prompts.length}`, model: "test/model:low", tokens: 1, cost: 0 };
+      },
+    });
+    const generated = `export const meta = {
+  name: "factory_shape",
+  description: "Shape emitted by the model",
+  phases: [{ title: "Discovery" }, { title: "Analysis" }]
+};
+async function run() {
+  const scout = agent("You are a documentation scout.", { tier: "scout" });
+  const researcher = agent("You are an architecture researcher.", { tier: "worker" });
+  const discovery = await phase("Discovery", async () => scout("List relevant files."));
+  return phase("Analysis", async () => researcher("Analyze " + discovery));
+}`;
+
+    const parsed = parseWorkflowScript(generated);
+    assert.doesNotMatch(parsed.body, /async function run/);
+    const result = await manager.runSync(generated);
+    assert.equal(result.result, "done:2");
+    assert.equal(result.agentCount, 2);
+    assert.match(prompts[0] ?? "", /documentation scout[\s\S]*Task:[\s\S]*List relevant files/);
+    assert.match(prompts[1] ?? "", /architecture researcher[\s\S]*Analyze done:1/);
+  });
+
+  it("awaits a trailing run() call instead of leaving an orphaned rejected promise", async () => {
+    const root = mkdtempSync(join(tmpdir(), "workflow-trailing-run-"));
+    roots.push(root);
+    const manager = new WorkflowManager({
+      cwd: root,
+      runsDir: join(root, "runs"),
+      agent: async (prompt) => ({ output: `done:${prompt}`, model: "test/model:low", tokens: 1, cost: 0 }),
+    });
+    const generated = `export const meta = {
+  name: "trailing_run",
+  description: "Await the invoked run function",
+  phases: [{ title: "Inspect" }]
+};
+const explorer = agent("You are an explorer.", { tier: "scout" });
+async function run() {
+  return explorer("Inspect the repository.");
+}
+run();`;
+    const parsed = parseWorkflowScript(generated);
+    assert.match(parsed.body, /return await run\(\)/);
+    const result = await manager.runSync(generated);
+    assert.equal(result.agentCount, 1);
+    assert.match(String(result.result), /done:You are an explorer/);
+  });
+
   it("executes fan-out/fan-in, persists history, and records usage", async () => {
     const root = mkdtempSync(join(tmpdir(), "workflow-runtime-"));
     roots.push(root);

@@ -16,7 +16,7 @@ export function installWorkflowResultDelivery(pi: ExtensionAPI, manager: Workflo
     try {
       const result = shared.__piWorkflowDeliveryApi?.sendMessage(
         { customType: "workflow-result", content, display: true },
-        { triggerTurn: true, deliverAs: "followUp" },
+        { triggerTurn: false },
       );
       void Promise.resolve(result).catch(() => {});
     } catch {

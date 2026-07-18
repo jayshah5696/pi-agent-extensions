@@ -25,7 +25,7 @@ import {
   toModelTierConfig,
   workflowRoleGuideline,
 } from "./profiles.js";
-import { applyWorkflowLimits, createWorkflowPreview, formatWorkflowApproval } from "./preview.js";
+import { applyWorkflowLimits, createWorkflowPreview } from "./preview.js";
 import {
   WORKFLOW_PROFILE_NAMES,
   WORKFLOW_ROLES,
@@ -39,6 +39,7 @@ import {
   type WorkflowThinkingLevel,
 } from "./types.js";
 import { WorkflowModelSelector } from "./model-selector.js";
+import { requestWorkflowApproval } from "./approval.js";
 import { openWorkflowRunBrowser } from "./run-browser.js";
 import { installWorkflowResultDelivery, installWorkflowTaskPanel } from "./ui.js";
 
@@ -454,7 +455,7 @@ async function requireWorkflowApproval(
   if (!ctx.hasUI) {
     throw new Error("This workflow requires interactive approval. Run it from Pi's TUI or RPC mode.");
   }
-  const approved = await ctx.ui.confirm(`Run workflow “${preview.name}”?`, formatWorkflowApproval(preview));
+  const approved = await requestWorkflowApproval(ctx, preview);
   if (!approved) throw new Error("Workflow cancelled by the user before execution.");
 }
 

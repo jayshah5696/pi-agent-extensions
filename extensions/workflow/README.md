@@ -66,12 +66,13 @@ Older persisted runs remain readable. Because their original schema did not reta
 
 ## JavaScript API
 
-Workflow scripts begin with a literal metadata export and may use these globals. Metadata phases may be written as `{ title: "Inspect" }` objects or plain strings; orchestration may be top-level or wrapped in `export default async function run()`.
+Workflow scripts begin with a literal metadata export and may use these globals. Metadata phases may be written as `{ title: "Inspect" }` objects or plain strings; orchestration may be top-level or wrapped in an async `run()` function. A trailing bare `run()` is normalized into an awaited call so its failures stay attached to the workflow run.
 
 * `agent(prompt, { label, tier, model?, tools?, disallowedTools? })`
+* `agent(persona, options)(task, overrides?)` for a reusable role
 * `parallel(thunks)`
 * `pipeline(items, ...stages)`
-* `phase(title)`
+* `phase(title)` or `phase(title, async () => ...)`
 * `log(message)`
 * `retry(thunk, { attempts })`
 * `gate(thunk, validator, { attempts })`
@@ -81,6 +82,8 @@ Workflow scripts begin with a literal metadata export and may use these globals.
 
 ## Security model
 
-Workflow execution requires Pi to mark the project as trusted. Every generated workflow is shown for approval before execution. The runtime uses Node's `vm` to constrain the script's normal globals and improve determinism, but `vm` is not a security sandbox. Run only generated or saved workflow JavaScript you trust.
+Workflow execution requires Pi to mark the project as trusted. Before execution, approval opens on the complete line-numbered JavaScript; Tab switches to the model, scale, tools, and security summary. Only an explicit `y` starts the run. The runtime uses Node's `vm` to constrain the script's normal globals and improve determinism, but `vm` is not a security sandbox. Run only generated or saved workflow JavaScript you trust.
 
 Subagents receive Pi's standard coding tools unless the script specifies a narrower `tools` allowlist. Repository writes are therefore possible and are called out in the approval preview.
+
+Background completion and failure notices are display-only. They do not automatically wake the parent model, so an invalid workflow cannot enter a retry and re-approval loop on its own.

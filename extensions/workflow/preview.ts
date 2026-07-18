@@ -8,12 +8,17 @@ export function createWorkflowPreview(
   source: "generated" | "saved",
   requested: Pick<WorkflowToolInput, "concurrency" | "maxAgents"> = {},
 ): WorkflowPreview {
-  const { meta } = parseWorkflowScript(script);
+  const { meta, body } = parseWorkflowScript(script);
+  const executableAgentCalls = countStaticAgentCalls(body);
+  if (!executableAgentCalls) {
+    throw new Error("Workflow preflight failed: the executable workflow body does not call agent().");
+  }
   return {
     name: meta.name,
     description: meta.description,
+    script,
     phases: meta.phases?.map((phase) => phase.title) ?? [],
-    staticAgentCalls: countStaticAgentCalls(script),
+    staticAgentCalls: executableAgentCalls,
     explicitModels: collectStringOptions(script, "model"),
     explicitTools: collectTools(script),
     profile: settings.profile,

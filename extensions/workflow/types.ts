@@ -44,6 +44,7 @@ export interface SavedWorkflowFile {
 export interface WorkflowPreview {
   name: string;
   description: string;
+  script: string;
   phases: string[];
   staticAgentCalls: number;
   explicitModels: string[];

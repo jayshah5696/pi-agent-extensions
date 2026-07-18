@@ -77,6 +77,18 @@ describe("workflow approval preview", () => {
     assert.deepEqual(preview.phases, ["Inspect", "Synthesize"]);
     assert.deepEqual(preview.explicitModels, ["other/reviewer"]);
     assert.deepEqual(preview.explicitTools, ["read", "bash"]);
+    assert.equal(preview.script, script);
     assert.match(formatWorkflowApproval(preview), /not a security sandbox/);
+  });
+
+  it("rejects a generated plan with no executable agent call before approval", () => {
+    assert.throws(
+      () => createWorkflowPreview(
+        `export const meta = { name: "empty", description: "No work" };\nreturn "nothing";`,
+        settings,
+        "generated",
+      ),
+      /preflight failed.*does not call agent/i,
+    );
   });
 });

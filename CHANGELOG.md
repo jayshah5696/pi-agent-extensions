@@ -9,6 +9,11 @@ All notable changes to this project will be documented in this file.
 - Added the `/workflow` dynamic-workflow extension with Lean/Balanced/Deep/Custom model profiles, scoped searchable model routing, generated-script approval, tolerant generated-script normalization, trusted-project enforcement, background execution, saved JavaScript workflows, durable history, and journaled pause/resume.
 - Added a unified interactive workflow run browser with rendered results, phase and agent drill-down, visible token/cost usage, prompt and recent tool-activity capture, Markdown/visual-HTML exports, reusable-script saving, and live pause/resume/stop controls.
 
+### Fixed
+- Workflow approval now opens on the complete line-numbered JavaScript, requires an explicit `y`, and keeps route/security details on a separate summary tab.
+- Background workflow failures no longer trigger a parent-model turn, preventing automatic retry and repeated approval loops.
+- Generated `agent(persona)(task)`, `phase(title, callback)`, plain `run()` wrappers, and trailing `run();` forms now execute and fail inside the managed workflow instead of producing zero-agent errors or crashing Pi with an orphaned rejection.
+
 ## [0.4.4] - 2026-05-31
 
 ### Added
