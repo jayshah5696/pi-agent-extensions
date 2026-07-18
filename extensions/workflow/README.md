@@ -8,8 +8,11 @@ Requires Pi 0.80.10 or newer.
 
 ```text
 /workflow setup
+/workflow doctor
 /workflow run audit this repository from correctness, testing, and maintainability angles
 ```
+
+`/workflow help` is the in-Pi user guide. `/workflow doctor` is a read-only readiness check for extension activation, project trust, model configuration and availability, saved workflows, and visible run history. Doctor makes no model calls, changes no settings, and starts no workflows.
 
 Setup offers four profiles:
 

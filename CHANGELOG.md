@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - Added release helper scripts and `just` recipes for repeatable npm publishing (`release:check`, `release:publish`, `just release patch`, etc.).
 - Added the `/workflow` dynamic-workflow extension with Lean/Balanced/Deep/Custom model profiles, scoped searchable model routing, generated-script approval, tolerant generated-script normalization, trusted-project enforcement, background execution, saved JavaScript workflows, durable history, and journaled pause/resume.
 - Added a unified interactive workflow run browser with rendered results, phase and agent drill-down, visible token/cost usage, prompt and recent tool-activity capture, Markdown/visual-HTML exports, reusable-script saving, and live pause/resume/stop controls.
+- Added `/workflow help` as an in-Pi quick-start and operations guide, plus a read-only `/workflow doctor` readiness check that makes no model calls.
 
 ### Fixed
 - Workflow approval now opens on the complete line-numbered JavaScript, requires an explicit `y`, and keeps route/security details on a separate summary tab.

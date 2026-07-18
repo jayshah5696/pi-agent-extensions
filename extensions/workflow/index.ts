@@ -40,6 +40,7 @@ import {
 } from "./types.js";
 import { WorkflowModelSelector } from "./model-selector.js";
 import { requestWorkflowApproval } from "./approval.js";
+import { formatWorkflowDoctor, formatWorkflowHelp } from "./help.js";
 import { openWorkflowRunBrowser } from "./run-browser.js";
 import { installWorkflowResultDelivery, installWorkflowTaskPanel } from "./ui.js";
 
@@ -56,6 +57,8 @@ const USAGE = [
   "  /workflow remove <id>             delete a persisted run",
   "  /workflow setup                   configure profile and model routes",
   "  /workflow settings                show effective settings",
+  "  /workflow doctor                  verify readiness without model calls",
+  "  /workflow help                    show the complete user guide",
 ].join("\n");
 
 const PROFILE_LABELS: Record<WorkflowProfileName, string> = {
@@ -191,8 +194,11 @@ function registerWorkflowCommand(
         case "settings":
           await showSettings(pi, cwd);
           return;
+        case "doctor":
+          await showDoctor(pi, manager, cwd, toolName, ctx);
+          return;
         case "help":
-          await print(pi, USAGE);
+          await print(pi, formatWorkflowHelp());
           return;
         default:
           ctx.ui.notify(`Unknown workflow action "${command}".`, "warning");
@@ -526,6 +532,35 @@ async function showRunStatus(pi: ExtensionAPI, manager: WorkflowManager, id?: st
 async function showSettings(pi: ExtensionAPI, cwd: string): Promise<void> {
   const settings = loadWorkflowControlSettings(cwd);
   await print(pi, settings ? formatSettings(settings) : "Workflow is not configured. Run /workflow setup.");
+}
+
+async function showDoctor(
+  pi: ExtensionAPI,
+  manager: WorkflowManager,
+  cwd: string,
+  toolName: string,
+  ctx: ExtensionCommandContext,
+): Promise<void> {
+  const settings = loadWorkflowControlSettings(cwd);
+  let candidates: WorkflowModelCandidate[] = [];
+  try {
+    candidates = toModelCandidates(ctx.modelRegistry.getAvailable());
+  } catch {
+    // The report remains useful when a provider cannot enumerate its catalog.
+  }
+  const available = new Set(candidates.map((candidate) => candidate.spec));
+  const missingRoles = settings
+    ? WORKFLOW_ROLES.filter((role) => !available.has(settings.routes[role].model))
+    : [];
+  await print(pi, formatWorkflowDoctor({
+    extensionActive: pi.getActiveTools().includes(toolName),
+    projectTrusted: ctx.isProjectTrusted(),
+    settings,
+    availableModels: candidates.length,
+    missingRoles,
+    savedWorkflows: discoverWorkflowFiles(cwd).length,
+    runHistory: manager.listAllRuns().length,
+  }));
 }
 
 function formatSettings(settings: WorkflowControlSettings): string {

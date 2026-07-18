@@ -51,6 +51,7 @@ describe("workflow extension registration", () => {
       modelRegistry: {
         getRegisteredProviderIds: () => [],
         getRegisteredProviderConfig: () => undefined,
+        getAvailable: () => [],
       },
       sessionManager: { getSessionId: () => "session-1" },
       mode: "print",
@@ -65,5 +66,11 @@ describe("workflow extension registration", () => {
 
     await commands.get("workflow")("help", { ui: { notify() {} } });
     assert.match(messages.at(-1) ?? "", /\/workflow setup/);
+
+    const beforeDoctor = messages.length;
+    await commands.get("workflow")("doctor", context);
+    assert.equal(messages.length, beforeDoctor + 1);
+    assert.match(messages.at(-1) ?? "", /Workflow doctor — read-only readiness check/);
+    assert.match(messages.at(-1) ?? "", /made no model calls.*started no workflows/);
   });
 });
