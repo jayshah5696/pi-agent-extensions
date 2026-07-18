@@ -38,6 +38,32 @@ describe("workflow runtime", () => {
     );
   });
 
+  it("normalizes generated string phases and an exported run wrapper", async () => {
+    const generated = `export const meta = {
+  name: "generated_shape",
+  description: "Shape emitted by a model",
+  phases: ["inspect", "synthesize"]
+};
+export default async function run() {
+  phase("inspect");
+  const finding = await agent("inspect", { label: "inspect", tier: "scout" });
+  return { finding };
+}`;
+    const parsed = parseWorkflowScript(generated);
+    assert.deepEqual(parsed.meta.phases?.map((phase) => phase.title), ["inspect", "synthesize"]);
+    assert.doesNotMatch(parsed.body, /export default/);
+
+    const root = mkdtempSync(join(tmpdir(), "workflow-generated-"));
+    roots.push(root);
+    const manager = new WorkflowManager({
+      cwd: root,
+      runsDir: join(root, "runs"),
+      agent: async (prompt) => ({ output: `done:${prompt}`, model: "test/model:low", tokens: 1, cost: 0 }),
+    });
+    const result = await manager.runSync(generated);
+    assert.equal(JSON.stringify(result.result), JSON.stringify({ finding: "done:inspect" }));
+  });
+
   it("executes fan-out/fan-in, persists history, and records usage", async () => {
     const root = mkdtempSync(join(tmpdir(), "workflow-runtime-"));
     roots.push(root);

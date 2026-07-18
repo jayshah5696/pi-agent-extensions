@@ -478,7 +478,7 @@ export function createWorkflowTool(options: { cwd?: string; manager: WorkflowMan
     promptSnippet: "Run a model-routed, resumable multi-agent JavaScript workflow.",
     promptGuidelines: [
       "Use workflow only when the user explicitly asks for a workflow, fan-out, or multi-agent orchestration.",
-      "Pass raw JavaScript in script, beginning with export const meta = { name, description, phases }.",
+      "Pass raw JavaScript in script, beginning with export const meta = { name, description, phases: [{ title: 'Inspect' }] }.",
       "Available globals are agent(prompt, opts), parallel(thunks), pipeline(items, ...stages), phase(title), log(message), retry(thunk, { attempts }), gate(thunk, validator, { attempts }), checkpoint(question), budget, args, and cwd.",
       "parallel() receives functions, not promises: await parallel(items.map(item => () => agent(...))).",
       "Every agent needs a unique short label and a semantic opts.tier. End with one synthesizer agent and return a compact JSON-serializable result.",
@@ -564,22 +564,35 @@ export function parseWorkflowScript(script: string): { meta: WorkflowMeta; body:
   if (meta.phases !== undefined) {
     if (!Array.isArray(meta.phases)) throw new Error("Workflow meta.phases must be an array.");
     phases = meta.phases.map((phase) => {
-      if (!phase || typeof phase !== "object" || typeof (phase as any).title !== "string") {
+      const title = typeof phase === "string" ? phase : (phase as any)?.title;
+      if (typeof title !== "string" || !title.trim()) {
         throw new Error("Each workflow phase needs a title.");
       }
-      return { title: (phase as any).title };
+      return { title: title.trim() };
     });
   }
+  const remaining = program.body.slice(1);
+  const defaultRun = remaining.length === 1 ? remaining[0] : undefined;
+  const runDeclaration = defaultRun?.type === "ExportDefaultDeclaration" ? defaultRun.declaration : undefined;
+  const runBody =
+    (runDeclaration?.type === "FunctionDeclaration" || runDeclaration?.type === "FunctionExpression") &&
+    runDeclaration.body?.type === "BlockStatement"
+      ? runDeclaration.body
+      : runDeclaration?.type === "ArrowFunctionExpression" && runDeclaration.body?.type === "BlockStatement"
+        ? runDeclaration.body
+        : undefined;
   return {
     meta: { name: meta.name.trim(), description: meta.description.trim(), phases },
-    body: `${script.slice(0, first.start)}${script.slice(first.end)}`,
+    body: runBody
+      ? script.slice(runBody.start + 1, runBody.end - 1)
+      : `${script.slice(0, first.start)}${script.slice(first.end)}`,
   };
 }
 
 export function buildForcedWorkflowPrompt(prompt: string, directive?: string): string {
   return [
     "The user explicitly requested a dynamic workflow. You must call the workflow tool exactly once.",
-    "Design the JavaScript orchestration, then pass it as the tool's script argument. Do not perform the task with ordinary tools in this parent turn.",
+    "Design the JavaScript orchestration, then pass it as the tool's script argument. Metadata phases must use [{ title: 'Phase name' }]. Write orchestration as top-level statements or an export default async function run(). Do not perform the task with ordinary tools in this parent turn.",
     directive ?? "",
     "User request:",
     prompt,

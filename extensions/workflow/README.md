@@ -27,6 +27,8 @@ Each profile maps four roles to an authenticated model and thinking level:
 * `reviewer` — independent criticism, preferably from another model family
 * `synthesizer` — final integration and judgment
 
+When routes are customized, the model picker starts from Pi's configured `enabledModels` scope and provides the same type-to-filter interaction as `/model`. This keeps provider catalogs with hundreds of entries out of the normal setup path.
+
 ## Storage
 
 * Global control settings: `~/.pi/workflows/control-plane.json`
@@ -49,7 +51,7 @@ A personal or project workflow with the same filename overrides the built-in.
 
 ## JavaScript API
 
-Workflow scripts begin with a literal metadata export and may use these globals:
+Workflow scripts begin with a literal metadata export and may use these globals. Metadata phases may be written as `{ title: "Inspect" }` objects or plain strings; orchestration may be top-level or wrapped in `export default async function run()`.
 
 * `agent(prompt, { label, tier, model?, tools?, disallowedTools? })`
 * `parallel(thunks)`

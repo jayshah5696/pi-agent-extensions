@@ -1,4 +1,9 @@
-import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import {
+  SettingsManager,
+  type ExtensionAPI,
+  type ExtensionCommandContext,
+  type ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import {
   buildForcedWorkflowPrompt,
   createWorkflowTool,
@@ -14,6 +19,7 @@ import {
 import { discoverWorkflowFiles, loadWorkflowFile } from "./discovery.js";
 import {
   routeSpec,
+  scopeModelCandidates,
   suggestWorkflowSettings,
   toModelCandidates,
   toModelTierConfig,
@@ -32,6 +38,7 @@ import {
   type WorkflowRole,
   type WorkflowThinkingLevel,
 } from "./types.js";
+import { WorkflowModelSelector } from "./model-selector.js";
 import { installWorkflowResultDelivery, installWorkflowTaskPanel } from "./ui.js";
 
 const USAGE = [
@@ -313,8 +320,15 @@ async function setupWorkflow(
     ctx.ui.notify("Workflow setup requires interactive mode.", "error");
     return undefined;
   }
-  const candidates = toModelCandidates(ctx.modelRegistry.getAvailable());
   const currentModel = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : undefined;
+  const available = [...ctx.modelRegistry.getAvailable()];
+  if (ctx.model && !available.some((model) => `${model.provider}/${model.id}` === currentModel)) {
+    available.unshift(ctx.model);
+  }
+  const configuredScope = SettingsManager.create(cwd, undefined, {
+    projectTrusted: ctx.isProjectTrusted(),
+  }).getEnabledModels();
+  const candidates = scopeModelCandidates(toModelCandidates(available), configuredScope, currentModel);
   if (!candidates.length && !currentModel) {
     ctx.ui.notify("No authenticated models are available.", "error");
     return undefined;
@@ -389,31 +403,50 @@ async function customizeRoutes(
   ctx: ExtensionCommandContext,
   customizeLimits = false,
 ): Promise<WorkflowControlSettings | undefined> {
-  const fallback = Object.values(settings.routes).map((route) => route.model);
-  const modelSpecs = [...new Set([...candidates.map((model) => model.spec), ...fallback])];
-  const labels = modelSpecs.map((spec) => {
-    const candidate = candidates.find((model) => model.spec === spec);
-    return candidate ? `${spec} — ${candidate.name}` : spec;
-  });
   const routes = { ...settings.routes };
 
   for (const role of WORKFLOW_ROLES) {
     const current = settings.routes[role];
-    const selected = await ctx.ui.select(`${capitalize(role)} model`, labels);
-    const selectedIndex = labels.indexOf(selected ?? "");
-    if (selectedIndex < 0) return undefined;
+    const selectedModel = await selectWorkflowModel(ctx, `${capitalize(role)} model`, candidates, current.model);
+    if (!selectedModel) return undefined;
     const thinkingLabels = WORKFLOW_THINKING_LEVELS.map((level) =>
       level === current.thinking ? `${level} (current)` : level,
     );
     const selectedThinking = await ctx.ui.select(`${capitalize(role)} effort`, thinkingLabels);
     if (!selectedThinking) return undefined;
     routes[role] = {
-      model: modelSpecs[selectedIndex],
+      model: selectedModel,
       thinking: selectedThinking.replace(" (current)", "") as WorkflowThinkingLevel,
     };
   }
 
   return { ...settings, profile: customizeLimits ? "custom" : settings.profile, routes };
+}
+
+async function selectWorkflowModel(
+  ctx: ExtensionCommandContext,
+  title: string,
+  candidates: readonly WorkflowModelCandidate[],
+  currentSpec: string,
+): Promise<string | undefined> {
+  if (ctx.mode !== "tui") {
+    const labels = candidates.map((model) => `${model.spec} — ${model.name}`);
+    const selected = await ctx.ui.select(title, labels);
+    const index = labels.indexOf(selected ?? "");
+    return candidates[index]?.spec;
+  }
+  return ctx.ui.custom<string | undefined>(
+    (tui, theme, _keybindings, done) =>
+      new WorkflowModelSelector(
+        tui,
+        theme,
+        title,
+        candidates,
+        currentSpec,
+        (model) => done(model.spec),
+        () => done(undefined),
+      ),
+  );
 }
 
 async function requireWorkflowApproval(

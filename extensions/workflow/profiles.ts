@@ -21,6 +21,37 @@ export function toModelCandidates(models: readonly Model<any>[]): WorkflowModelC
   }));
 }
 
+export function scopeModelCandidates(
+  models: readonly WorkflowModelCandidate[],
+  patterns: readonly string[] | undefined,
+  currentModelSpec?: string,
+): WorkflowModelCandidate[] {
+  const unique = new Map(models.map((model) => [model.spec, model]));
+  if (!patterns?.length) return [...unique.values()];
+
+  const scoped: WorkflowModelCandidate[] = [];
+  const seen = new Set<string>();
+  for (const rawPattern of patterns) {
+    const pattern = stripThinkingSuffix(rawPattern.trim());
+    const candidates = [...unique.values()];
+    const exact = candidates.filter((model) => exactModelPattern(model, pattern));
+    const matches = exact.length
+      ? exact
+      : pattern.includes("*")
+        ? candidates.filter((model) => matchesWildcardPattern(model, pattern))
+        : candidates.filter((model) => matchesFuzzyPattern(model, pattern)).slice(0, 1);
+    for (const model of matches) {
+      if (seen.has(model.spec)) continue;
+      scoped.push(model);
+      seen.add(model.spec);
+    }
+  }
+  if (currentModelSpec && unique.has(currentModelSpec) && !seen.has(currentModelSpec)) {
+    scoped.unshift(unique.get(currentModelSpec)!);
+  }
+  return scoped.length ? scoped : [...unique.values()];
+}
+
 export function suggestWorkflowSettings(
   profile: Exclude<WorkflowProfileName, "custom">,
   models: readonly WorkflowModelCandidate[],
@@ -88,6 +119,33 @@ function differentProviderModel(
 
 function route(model: string, thinking: WorkflowThinkingLevel): WorkflowRoleRoute {
   return { model, thinking };
+}
+
+function stripThinkingSuffix(pattern: string): string {
+  const match = pattern.match(/:(off|minimal|low|medium|high|xhigh|max)$/i);
+  return match ? pattern.slice(0, -match[0].length) : pattern;
+}
+
+function exactModelPattern(model: WorkflowModelCandidate, rawPattern: string): boolean {
+  const pattern = rawPattern.toLowerCase();
+  const spec = model.spec.toLowerCase();
+  const id = spec.slice(spec.indexOf("/") + 1);
+  return pattern === spec || pattern === id;
+}
+
+function matchesWildcardPattern(model: WorkflowModelCandidate, rawPattern: string): boolean {
+  const source = rawPattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replaceAll("*", ".*");
+  const wildcard = new RegExp(`^${source}$`, "i");
+  const spec = model.spec.toLowerCase();
+  const id = spec.slice(spec.indexOf("/") + 1);
+  return wildcard.test(spec) || wildcard.test(id);
+}
+
+function matchesFuzzyPattern(model: WorkflowModelCandidate, rawPattern: string): boolean {
+  const pattern = rawPattern.toLowerCase();
+  const spec = model.spec.toLowerCase();
+  const search = `${spec} ${model.name}`.toLowerCase();
+  return search.includes(pattern);
 }
 
 export function routeSpec(route: WorkflowRoleRoute): string {

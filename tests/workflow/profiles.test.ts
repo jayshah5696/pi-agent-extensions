@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   rankModels,
+  scopeModelCandidates,
   suggestWorkflowSettings,
   toModelTierConfig,
   workflowRoleGuideline,
@@ -39,5 +40,22 @@ describe("workflow model profiles", () => {
     assert.equal(config.tiers.medium, config.tiers.worker);
     assert.equal(config.tiers.big, config.tiers.synthesizer);
     assert.match(workflowRoleGuideline(settings), /tier: 'reviewer'/);
+  });
+
+  it("limits setup choices to Pi's enabled model scope", () => {
+    const variants = [
+      ...models,
+      { spec: "openai/gpt-mid-mini", provider: "openai", name: "GPT Mid Mini", costOutput: 1, contextWindow: 128_000 },
+    ];
+    const scoped = scopeModelCandidates(
+      variants,
+      ["openai/gpt-mid", "anthropic/haiku:low"],
+      "anthropic/opus",
+    );
+    assert.deepEqual(scoped.map((model) => model.spec), [
+      "anthropic/opus",
+      "openai/gpt-mid",
+      "anthropic/haiku",
+    ]);
   });
 });
