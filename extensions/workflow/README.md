@@ -36,6 +36,7 @@ When routes are customized, the model picker starts from Pi's configured `enable
 * Project workflows: `.pi/workflows/*.js`
 * Personal workflows: `~/.pi/workflows/saved/*.js`
 * Run journals and results: `~/.pi/workflows/projects/<project-hash>/runs/*.json`
+* Exported reports: `~/.pi/workflows/projects/<project-hash>/exports/*.{md,html}`
 
 Project workflow files override personal files with the same filename. Run state stays outside the repository.
 
@@ -48,6 +49,20 @@ Three built-in starting points are always available:
 ```
 
 A personal or project workflow with the same filename overrides the built-in.
+
+## Run browser
+
+`/workflow` opens the interactive run browser. `/workflow runs` and `/workflow history` open the same view, while `/workflow active` starts with the active filter selected. History is project-scoped across Pi sessions, so restarting Pi does not hide an earlier run.
+
+Select a run and press Enter to inspect it. Completed runs open on the rendered Markdown result; running and paused runs open on progress. The detail view provides:
+
+* phase progress, elapsed time, token usage, and cost
+* complete agent prompts, recent tool activity, model routes, and results for newly recorded runs
+* the generated JavaScript source
+* copy, Markdown export, self-contained visual HTML save/open, and save-as-reusable-workflow actions
+* pause, resume, and stop controls for live runs
+
+Older persisted runs remain readable. Because their original schema did not retain agent prompts or tool activity, those two fields show a compatibility notice while their full results and usage remain available.
 
 ## JavaScript API
 

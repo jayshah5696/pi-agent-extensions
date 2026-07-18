@@ -60,12 +60,21 @@ export interface WorkflowAgentSnapshot {
   label: string;
   status: "queued" | "running" | "done" | "error" | "skipped";
   phase?: string;
+  prompt?: string;
   model?: string;
   result?: unknown;
   error?: string;
   cached?: boolean;
   tokens?: number;
   cost?: number;
+  activity?: WorkflowAgentActivity[];
+}
+
+export interface WorkflowAgentActivity {
+  type: "tool_call" | "tool_result";
+  name: string;
+  summary?: string;
+  isError?: boolean;
 }
 
 export interface WorkflowSnapshot {
@@ -92,6 +101,7 @@ interface JournalEntry {
   model?: string;
   tokens?: number;
   cost?: number;
+  activity?: WorkflowAgentActivity[];
 }
 
 export type RunStatus = "running" | "paused" | "completed" | "failed" | "aborted";
@@ -162,6 +172,7 @@ interface AgentRunResult {
   model: string;
   tokens: number;
   cost: number;
+  activity?: WorkflowAgentActivity[];
 }
 
 interface ExecuteOptions extends ExecOptions {
@@ -617,14 +628,27 @@ export function loadModelTierConfig(path = modelTierPath()): ModelTierConfig {
 
 export function deliverText(run: ManagedRun): string {
   const result = run.result;
-  const summary = result?.result === undefined ? "No result." : JSON.stringify(result.result, null, 2);
+  const summary = workflowResultText(result?.result);
   return [
     `✓ Background workflow "${run.workflowName}" finished (${result?.agentCount ?? run.snapshot.agentCount} agents, ${run.snapshot.tokens} tokens, $${run.snapshot.cost.toFixed(4)}).`,
     "",
-    summary.length > 2000 ? `${summary.slice(0, 2000)}\n…` : summary,
+    summary,
     "",
     `Run ID: ${run.runId}`,
+    `Inspect details, agent evidence, and exports with /workflow status ${run.runId}`,
   ].join("\n");
+}
+
+export function workflowResultText(value: unknown): string {
+  if (value === undefined || value === null) return "No result.";
+  if (typeof value === "string") return value;
+  if (typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    for (const key of ["report", "markdown", "content", "text", "summary"]) {
+      if (typeof record[key] === "string" && record[key].trim()) return record[key] as string;
+    }
+  }
+  return JSON.stringify(value, null, 2);
 }
 
 export function renderPanel(manager: WorkflowManager, theme: Theme, _width?: number): string[] {
@@ -669,7 +693,7 @@ async function executeWorkflow(script: string, args: unknown, options: ExecuteOp
     const phaseName = callOptions.phase ?? currentPhase;
     const fingerprint = hashCall(prompt, callOptions);
     const prior = cached.get(index);
-    const row: WorkflowAgentSnapshot = { id: index + 1, label, status: "queued", phase: phaseName };
+    const row: WorkflowAgentSnapshot = { id: index + 1, label, status: "queued", phase: phaseName, prompt };
     snapshot.agents.push(row);
     update();
 
@@ -680,6 +704,7 @@ async function executeWorkflow(script: string, args: unknown, options: ExecuteOp
       row.model = prior.model;
       row.tokens = prior.tokens;
       row.cost = prior.cost;
+      row.activity = prior.activity;
       journal.push(prior);
       options.onJournal?.([...journal]);
       update();
@@ -703,6 +728,7 @@ async function executeWorkflow(script: string, args: unknown, options: ExecuteOp
           row.model = result.model;
           row.tokens = result.tokens;
           row.cost = result.cost;
+          row.activity = result.activity;
           const entry: JournalEntry = {
             callIndex: index,
             hash: fingerprint,
@@ -710,6 +736,7 @@ async function executeWorkflow(script: string, args: unknown, options: ExecuteOp
             model: result.model,
             tokens: result.tokens,
             cost: result.cost,
+            activity: result.activity,
           };
           journal.push(entry);
           options.onJournal?.([...journal]);
@@ -855,7 +882,13 @@ async function runAgent(prompt: string, options: AgentCallOptions, run: ExecuteO
     const output = lastAssistantText(session.messages);
     if (!output) throw new Error("Subagent returned no text result.");
     const stats = session.getSessionStats();
-    return { output, model: spec, tokens: stats.tokens.total, cost: stats.cost };
+    return {
+      output,
+      model: spec,
+      tokens: stats.tokens.total,
+      cost: stats.cost,
+      activity: extractAgentActivity(session.messages),
+    };
   } finally {
     run.signal.removeEventListener("abort", abort);
     session.dispose();
@@ -894,6 +927,39 @@ function lastAssistantText(messages: readonly any[]): string {
     }
   }
   return "";
+}
+
+function extractAgentActivity(messages: readonly any[]): WorkflowAgentActivity[] {
+  const activity: WorkflowAgentActivity[] = [];
+  for (const message of messages) {
+    if (message?.role === "assistant" && Array.isArray(message.content)) {
+      for (const part of message.content) {
+        if (part?.type !== "toolCall" || typeof part.name !== "string") continue;
+        const args = part.arguments && Object.keys(part.arguments).length ? JSON.stringify(part.arguments) : undefined;
+        activity.push({ type: "tool_call", name: part.name, summary: truncateActivity(args) });
+      }
+      continue;
+    }
+    if (message?.role !== "toolResult" || typeof message.toolName !== "string") continue;
+    const text = typeof message.content === "string"
+      ? message.content
+      : Array.isArray(message.content)
+        ? message.content.filter((part: any) => part?.type === "text").map((part: any) => part.text).join("\n")
+        : undefined;
+    activity.push({
+      type: "tool_result",
+      name: message.toolName,
+      summary: truncateActivity(text),
+      isError: message.isError,
+    });
+  }
+  return activity.slice(-20);
+}
+
+function truncateActivity(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  const text = String(value).trim();
+  return text.length > 500 ? `${text.slice(0, 500)}…` : text || undefined;
 }
 
 function literalValue(node: any): unknown {

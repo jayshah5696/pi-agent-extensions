@@ -39,6 +39,7 @@ import {
   type WorkflowThinkingLevel,
 } from "./types.js";
 import { WorkflowModelSelector } from "./model-selector.js";
+import { openWorkflowRunBrowser } from "./run-browser.js";
 import { installWorkflowResultDelivery, installWorkflowTaskPanel } from "./ui.js";
 
 const USAGE = [
@@ -47,7 +48,8 @@ const USAGE = [
   "  /workflow run <prompt>            generate and run a workflow",
   "  /workflow saved <name> [json]     run a saved JavaScript workflow",
   "  /workflow list                    list saved workflow files",
-  "  /workflow active | history        inspect runs",
+  "  /workflow runs                    open the interactive run browser",
+  "  /workflow active | history        open runs with a status filter",
   "  /workflow status <id>             inspect one run",
   "  /workflow pause|resume|stop <id>  control a run",
   "  /workflow remove <id>             delete a persisted run",
@@ -153,14 +155,21 @@ function registerWorkflowCommand(
         case "list":
           await showSavedWorkflows(pi, cwd);
           return;
+        case "runs":
+          if (ctx.hasUI) await openWorkflowRunBrowser(manager, cwd, ctx);
+          else await showRuns(pi, manager, false);
+          return;
         case "active":
-          await showRuns(pi, manager, true);
+          if (ctx.hasUI) await openWorkflowRunBrowser(manager, cwd, ctx, { initialFilter: "active" });
+          else await showRuns(pi, manager, true);
           return;
         case "history":
-          await showRuns(pi, manager, false);
+          if (ctx.hasUI) await openWorkflowRunBrowser(manager, cwd, ctx);
+          else await showRuns(pi, manager, false);
           return;
         case "status":
-          await showRunStatus(pi, manager, rest[0]);
+          if (ctx.hasUI && rest[0]) await openWorkflowRunBrowser(manager, cwd, ctx, { initialRunId: rest[0] });
+          else await showRunStatus(pi, manager, rest[0]);
           return;
         case "pause":
           notifyControl(ctx, rest[0], "pause", (id) => manager.pause(id));
@@ -203,21 +212,14 @@ async function openWorkflowHub(
     await print(pi, USAGE);
     return;
   }
-  const action = await ctx.ui.select("Workflow", [
-    "Run a dynamic workflow",
-    "Run a saved workflow",
-    "Active runs",
-    "Run history",
-    "Setup model profile",
-    "Show settings",
-  ]);
+  const action = await openWorkflowRunBrowser(manager, cwd, ctx);
   switch (action) {
-    case "Run a dynamic workflow": {
+    case "new": {
       const prompt = await ctx.ui.editor("What should the workflow accomplish?", "");
       if (prompt?.trim()) await runGeneratedWorkflow(pi, cwd, toolName, prompt.trim(), ctx);
       return;
     }
-    case "Run a saved workflow": {
+    case "saved": {
       const workflows = discoverWorkflowFiles(cwd);
       if (!workflows.length) return ctx.ui.notify("No saved .js workflows found.", "info");
       const labels = workflows.map((workflow) => workflowLabel(workflow));
@@ -226,16 +228,10 @@ async function openWorkflowHub(
       if (workflow) await runSavedWorkflow(manager, cwd, workflow.id, "", ctx);
       return;
     }
-    case "Active runs":
-      await showRuns(pi, manager, true);
-      return;
-    case "Run history":
-      await showRuns(pi, manager, false);
-      return;
-    case "Setup model profile":
+    case "setup":
       await setupWorkflow(cwd, ctx);
       return;
-    case "Show settings":
+    case "settings":
       await showSettings(pi, cwd);
       return;
   }
@@ -494,7 +490,7 @@ async function showSavedWorkflows(pi: ExtensionAPI, cwd: string): Promise<void> 
 
 async function showRuns(pi: ExtensionAPI, manager: WorkflowManager, activeOnly: boolean): Promise<void> {
   const runs = manager
-    .listRuns()
+    .listAllRuns()
     .filter((run) => !activeOnly || run.status === "running" || run.status === "paused");
   if (!runs.length) {
     await print(pi, activeOnly ? "No active workflows." : "No workflow history yet.");
@@ -514,7 +510,7 @@ async function showRuns(pi: ExtensionAPI, manager: WorkflowManager, activeOnly: 
 
 async function showRunStatus(pi: ExtensionAPI, manager: WorkflowManager, id?: string): Promise<void> {
   if (!id) return print(pi, "Usage: /workflow status <runId>");
-  const run = manager.listRuns().find((candidate) => candidate.runId === id);
+  const run = manager.listAllRuns().find((candidate) => candidate.runId === id);
   if (!run) return print(pi, `No workflow run "${id}".`);
   const lines = [
     `${run.workflowName} (${run.runId}) — ${run.status}`,

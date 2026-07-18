@@ -70,7 +70,13 @@ export default async function run() {
     const manager = new WorkflowManager({
       cwd: root,
       runsDir: join(root, "runs"),
-      agent: async (prompt) => ({ output: `done:${prompt}`, model: "test/model:low", tokens: 10, cost: 0.01 }),
+      agent: async (prompt) => ({
+        output: `done:${prompt}`,
+        model: "test/model:low",
+        tokens: 10,
+        cost: 0.01,
+        activity: [{ type: "tool_call" as const, name: "read", summary: "README.md" }],
+      }),
     });
     const result = await manager.runSync(workflowScript, undefined, { concurrency: 2, maxAgents: 5 });
     assert.equal(result.agentCount, 3);
@@ -78,6 +84,10 @@ export default async function run() {
     assert.equal(result.cost, 0.03);
     assert.deepEqual((result.result as any).findings, ["done:check a", "done:check b"]);
     assert.equal(manager.listRuns()[0].status, "completed");
+    assert.equal(manager.listRuns()[0].agents[0]?.prompt, "check a");
+    assert.deepEqual(manager.listRuns()[0].agents[0]?.activity, [
+      { type: "tool_call", name: "read", summary: "README.md" },
+    ]);
   });
 
   it("enforces the configured total-agent cap", async () => {
