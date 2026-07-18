@@ -47,7 +47,8 @@
       "./extensions/todos/index.ts",
       "./extensions/whimsical/index.ts",
       "./extensions/btw/index.ts",
-      "./extensions/powerline-footer/index.ts"
+      "./extensions/powerline-footer/index.ts",
+      "./extensions/workflow/index.ts"
     ],
     "themes": [
       "./themes/nightowl.json",
@@ -57,20 +58,27 @@
     ]
   },
   "peerDependencies": {
-    "@earendil-works/pi-ai": "*",
-    "@earendil-works/pi-coding-agent": "*",
-    "@earendil-works/pi-tui": "*"
+    "@earendil-works/pi-ai": ">=0.80.10",
+    "@earendil-works/pi-coding-agent": ">=0.80.10",
+    "@earendil-works/pi-tui": ">=0.80.10"
   },
   "devDependencies": {
-    "@earendil-works/pi-ai": "^0.80.2",
-    "@earendil-works/pi-coding-agent": "^0.80.2",
-    "@earendil-works/pi-tui": "^0.80.2",
+    "@earendil-works/pi-ai": "^0.80.10",
+    "@earendil-works/pi-coding-agent": "^0.80.10",
+    "@earendil-works/pi-tui": "^0.80.10",
     "@sinclair/typebox": "^0.34.48",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   },
   "scripts": {
     "test": "node --import tsx --test 'tests/**/*.test.ts' 'tests/*.test.ts'",
+    "test:workflow": "node --import tsx --test 'tests/workflow/**/*.test.ts'",
+    "typecheck:workflow": "tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --skipLibCheck --strict extensions/workflow/*.ts tests/workflow/*.ts",
     "release:check": "./scripts/check-release.sh",
     "release:publish": "./scripts/publish-release.sh"
+  },
+  "dependencies": {
+    "acorn": "^8.16.0",
+    "typebox": "1.1.38"
   }
 }

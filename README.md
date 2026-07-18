@@ -35,6 +35,7 @@ Original repository: https://github.com/mitsuhiko/agent-stuff
 | **btw** | Command | Quick side questions without history | ✅ Stable |
 | **powerline-footer** | UI | Custom powerline-style footer bar | ✅ Stable |
 | **session-breakdown** | Command | Session analytics dashboard | ✅ Stable |
+| **workflow** | Tool / Command | Model-routed dynamic workflows with `/workflow` | ⚙️ Beta |
 
 ## Install
 
@@ -164,7 +165,7 @@ pi
 
 ## Documentation & Extensions Reference
 
-For in-depth explanations, options, and commands for all 16 extensions, refer to the [Extensions Reference](docs/extensions.md).
+For in-depth explanations, options, and commands for all 17 extensions, refer to the [Extensions Reference](docs/extensions.md).
 
 For installation, manual testing, and setup guides, see the [Documentation Index](docs/README.md).
 
@@ -202,4 +203,3 @@ npm run release:publish -- patch
 ## License
 
 MIT
-
