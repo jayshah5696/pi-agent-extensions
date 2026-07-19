@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Release dates match the
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-07-19
+
 ### Added
 - Added a real Ghostty screenshot captured from an isolated npm installation, showing all 17 extensions and four bundled themes. The asset lives under `docs/assets/` so it is included in the npm package.
 

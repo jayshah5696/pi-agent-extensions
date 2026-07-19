@@ -1,6 +1,6 @@
 {
   "name": "pi-agent-extensions",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "17 extensions and four themes for the Pi coding agent",
   "type": "module",
   "repository": {
