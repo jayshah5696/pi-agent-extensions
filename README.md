@@ -15,9 +15,69 @@ pi install npm:pi-agent-extensions
 
 The npm package is unscoped: use `npm:pi-agent-extensions`, with no `@scope/` prefix. Requires Pi `0.80.10` or newer and Node.js `22.19.0` or newer.
 
-![Pi loading all 17 extensions and four themes from npm:pi-agent-extensions in Ghostty](https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/pi-agent-extensions-showcase.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/gallery/workflow-setup.svg" alt="Pi workflow setup showing the Balanced profile, model routes, concurrency, and approval policy" width="100%">
+</p>
 
-The screenshot is a real Pi startup from an isolated installation of the published npm package. Press `Ctrl+O` at startup to show the full loaded-resource list.
+## See it in action
+
+Every screenshot below comes from a real Pi session using an isolated installation of `npm:pi-agent-extensions`. The UI is not mocked: the gallery uses seeded sessions, todos, and a disposable Git project so the extensions have realistic data to display.
+
+### Plan and navigate
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><strong>Workflow setup</strong><br><code>/workflow setup</code> configures profiles, model routes, concurrency, and approval.<br><br><img src="https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/gallery/workflow-setup.svg" alt="Workflow setup confirmation" width="100%"></td>
+    <td width="50%" valign="top"><strong>Sessions</strong><br><code>/sessions</code> searches project sessions with a live conversation preview.<br><br><img src="https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/gallery/sessions.svg" alt="Sessions picker with live preview" width="100%"></td>
+  </tr>
+</table>
+
+### Ask, answer, and hand off
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><strong>Structured questions</strong><br>The <code>ask_user</code> tool presents validated choices and always supports a free-text answer.<br><br><img src="https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/gallery/ask-user.svg" alt="ask_user single-select question" width="100%"></td>
+    <td width="50%" valign="top"><strong>Batch answers</strong><br><code>/answer</code> collects answers to multiple questions in one focused editor.<br><br><img src="https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/gallery/answer.svg" alt="Answer extension collecting multiple answers" width="100%"></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><strong>Side questions</strong><br><code>/btw</code> answers an ephemeral question without adding it to session history.<br><br><img src="https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/gallery/btw.svg" alt="BTW side-question overlay" width="100%"></td>
+    <td width="50%" valign="top"><strong>Session handoff</strong><br><code>/handoff &lt;goal&gt;</code> extracts and opens a reviewable transfer prompt.<br><br><img src="https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/gallery/handoff.svg" alt="Handoff prompt editor" width="100%"></td>
+  </tr>
+</table>
+
+### Inspect and manage work
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><strong>Files</strong><br><code>/files</code> combines fuzzy navigation, Git status, diffs, and prompt context.<br><br><img src="https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/gallery/files.svg" alt="Files browser with Git status" width="100%"></td>
+    <td width="50%" valign="top"><strong>Review</strong><br><code>/review</code> selects a review scope and drives an interactive code-review flow.<br><br><img src="https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/gallery/review.svg" alt="Review scope selector" width="100%"></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><strong>Todos</strong><br><code>/todos</code> manages file-backed tasks that agents can claim and update.<br><br><img src="https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/gallery/todos.svg" alt="Todo manager with seeded release tasks" width="100%"></td>
+    <td width="50%" valign="top"><strong>Context</strong><br><code>/context-simple</code> explains token allocation, loaded resources, and session cost.<br><br><img src="https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/gallery/context.svg" alt="Context window dashboard" width="100%"></td>
+  </tr>
+</table>
+
+### Analyze, automate, and customize
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><strong>Session analytics</strong><br><code>/session-breakdown</code> charts sessions, messages, tokens, cost, and model usage.<br><br><img src="https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/gallery/session-breakdown.svg" alt="Session breakdown analytics" width="100%"></td>
+    <td width="50%" valign="top"><strong>Execution loops</strong><br><code>/loop</code> configures test-driven, condition-driven, or self-driven iteration.<br><br><img src="https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/gallery/loop.svg" alt="Loop preset selector" width="100%"></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><strong>Session control</strong><br><code>/control-sessions</code> lists controllable Pi sessions for inter-session work.<br><br><img src="https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/gallery/control.svg" alt="Controllable Pi sessions" width="100%"></td>
+    <td width="50%" valign="top"><strong>Whimsical UI</strong><br><code>/whimsy</code> tunes themed loading messages, spinners, and exits.<br><br><img src="https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/gallery/whimsical.svg" alt="Whimsical chaos mixer" width="100%"></td>
+  </tr>
+</table>
+
+### Learn the workflow surface
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/gallery/workflow-help.svg" alt="Workflow command guide" width="100%">
+</p>
+
+The gallery also shows the **powerline footer** on every screen and its live Git branch, dirty-file counts, model, context, cost, and timer. **CWD history** runs in the background and keeps the displayed working directory synchronized. **Notify** runs after agent turns and sends an OSC 777 desktop notification, so it has no persistent in-terminal panel to photograph.
 
 ## Extensions
 
@@ -28,8 +88,8 @@ The screenshot is a real Pi startup from an isolated installation of the publish
 | **handoff** | Command | Goal-driven context transfer `/handoff` | ✅ Stable |
 | **whimsical** | UI | Context-aware loading messages & exit | ✅ Stable |
 | **files** | Tool | Unified file browser & git integration | ✅ Stable |
-| **notify** | Tool | Desktop notifications via OSC 777 | ✅ Stable |
-| **context** | UI | Context breakdown dashboard | ✅ Stable |
+| **notify** | Automatic | OSC 777 desktop notification after agent turns | ✅ Stable |
+| **context** | Command | Context breakdown dashboard with `/context-simple` | ✅ Stable |
 | **review** | Tool | Interactive code review system | ✅ Stable |
 | **loop** | Tool | Iterative execution loop | ✅ Stable |
 | **todos** | Tool | File-based todo list management | ✅ Stable |

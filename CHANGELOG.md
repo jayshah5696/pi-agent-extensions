@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Release dates match the
 
 ## [Unreleased]
 
+### Added
+- Added a real usage gallery captured from an isolated npm installation, covering every interactive extension and documenting the background-only extensions.
+
+### Fixed
+- Provider fallback now ignores models without usable API-key or request-header authentication instead of selecting them and failing at request time.
+- Corrected the context command, automatic notification behavior, and file-backed todo storage paths in the extension documentation.
+
 ## [0.5.1] - 2026-07-19
 
 ### Added
