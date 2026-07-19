@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-18
+
 ### Added
 - Added release helper scripts and `just` recipes for repeatable npm publishing (`release:check`, `release:publish`, `just release patch`, etc.).
 - Added the `/workflow` dynamic-workflow extension with Lean/Balanced/Deep/Custom model profiles, scoped searchable model routing, generated-script approval, tolerant generated-script normalization, trusted-project enforcement, background execution, saved JavaScript workflows, durable history, and journaled pause/resume.

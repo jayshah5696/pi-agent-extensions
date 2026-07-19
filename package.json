@@ -28,7 +28,7 @@
     "url": "https://github.com/jayshah5696"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.19.0"
   },
   "pi": {
     "extensions": [

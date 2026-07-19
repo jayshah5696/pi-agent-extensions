@@ -45,6 +45,8 @@ Original repository: https://github.com/mitsuhiko/agent-stuff
 pi install npm:pi-agent-extensions
 ```
 
+The published npm package is the unscoped package [`pi-agent-extensions`](https://www.npmjs.com/package/pi-agent-extensions), so no `@scope/` prefix is needed.
+
 All extensions will be available immediately after installation.
 
 ### From Source (For Development)
@@ -109,16 +111,16 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ```bash
 # Update to latest version
-pi update pi-agent-extensions
+pi update npm:pi-agent-extensions
 
 # Or update all packages
-pi --update-packages
+pi update --extensions
 ```
 
 ## Uninstall
 
 ```bash
-pi remove pi-agent-extensions
+pi remove npm:pi-agent-extensions
 ```
 
 ## Troubleshooting
