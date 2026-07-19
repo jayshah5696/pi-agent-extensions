@@ -1,6 +1,6 @@
 # Manual Testing Guide
 
-This guide details how to manually verify the behavior of all 16 extensions and themes in a terminal session.
+This guide details how to manually verify the behavior of all 17 extensions and themes in a terminal session.
 
 ---
 
@@ -22,7 +22,7 @@ On startup, you should see:
 ```
 Extensions: sessions, ask_user, handoff, notify, context, files, review, 
             loop, answer, control, cwd-history, session-breakdown, todos, whimsical,
-            btw, powerline-footer
+            btw, powerline-footer, workflow
 ```
 
 ---
@@ -177,7 +177,26 @@ Verify the behavior of the adapted `agent-stuff` extensions:
 
 ---
 
-## 8. Color Themes
+## 8. Workflow (`/workflow`)
+
+**Goal:** Verify model-profile setup, generated-script approval, background progress, and saved workflows.
+
+### Test Instructions
+
+1. Run `/workflow setup`, choose **Balanced**, inspect the suggested role routes, and save globally.
+2. Run:
+   ```text
+   /workflow run inspect this repository for three independent maintainability risks and verify each one
+   ```
+3. Verify that the generated JavaScript approval shows phases, model roles, scale caps, tools, and the trusted-script warning.
+4. Approve it. Confirm `/workflow active` shows the background run and that its final result returns to the conversation.
+5. Add a small workflow under `.pi/workflows/smoke.js`, confirm `/workflow list` discovers it, then run `/workflow saved smoke`.
+6. Start a longer saved workflow, run `/workflow pause <runId>`, then `/workflow resume <runId>`. Confirm completed prefix agents are marked as cached rather than rerun.
+7. Decline an approval and confirm no subagent starts.
+
+---
+
+## 9. Color Themes
 
 **Goal:** Verify theme styling.
 

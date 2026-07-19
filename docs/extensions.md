@@ -1,6 +1,6 @@
 # Extensions Reference
 
-This document provides a comprehensive reference for the 16 extensions included in **pi-agent-extensions**.
+This document provides a comprehensive reference for the 17 extensions included in **pi-agent-extensions**.
 
 ---
 
@@ -22,6 +22,7 @@ This document provides a comprehensive reference for the 16 extensions included 
 14. [Sessions (`/sessions`)](#14-sessions-sessions)
 15. [Todos (`/todos`)](#15-todos-todos)
 16. [Whimsical (`/whimsy`)](#16-whimsical-whimsy)
+17. [Workflow (`/workflow`)](#17-workflow-workflow)
 
 ---
 
@@ -269,3 +270,61 @@ Desi/Bollywood-infused, context-aware loader spinner and exits.
     *   **Tuner Window:** Running `/whimsy` opens a percent-tuning window with interactive sliders to adjust weights and preview loader speeds.
     *   **Custom Spinners:** Options to choose spinner types: *Sleek Orbit*, *Neon Pulse*, *Scanline*, *Chevron Flow*, or *Matrix Glyph*.
     *   **Weighted Exits:** `/exit` or `/bye` commands deliver a humorous themed goodbye before closing.
+
+---
+
+## 17. Workflow (`/workflow`)
+
+Runs inspectable JavaScript orchestration programs across multiple Pi subagents, with deliberate model routing and an approval step before execution.
+
+*   **Type:** Tool & Command
+*   **Command:** `/workflow`
+*   **Tool Name:** `workflow`
+*   **Profile setup:** `/workflow setup`
+*   **Features:**
+    *   **Role-based model routing:** Configure `scout`, `worker`, `reviewer`, and `synthesizer` independently, including thinking effort.
+    *   **Profiles:** Lean (3 concurrent / 8 total), Balanced (4 / 15), Deep (6 / 40), or fully Custom.
+    *   **Approval preview:** Shows phases, scale caps, model routes, explicit model overrides, tool allowlists, and the trusted-script warning before execution.
+    *   **Background execution:** Results return to the conversation automatically while the user continues working.
+    *   **Durable runs:** Journals and results live outside the repository under `~/.pi/workflows/projects/`.
+    *   **Pause and resume:** Resuming replays the unchanged completed prefix and runs only unfinished agent calls.
+    *   **Saved workflows:** Project JavaScript in `.pi/workflows/*.js` overrides personal workflows in `~/.pi/workflows/saved/*.js`.
+    *   **Built-in workflows:** Includes `code-review`, `repository-audit`, and `migration-plan`; personal and project files can override them.
+    *   **Trust boundary:** Execution is disabled for untrusted projects. The JavaScript VM is a determinism boundary, not a security sandbox; only run scripts you trust.
+
+### Main commands
+
+```text
+/workflow run <prompt>
+/workflow saved <name> [json args]
+/workflow list
+/workflow active
+/workflow history
+/workflow status <runId>
+/workflow pause|resume|stop <runId>
+/workflow remove <runId>
+/workflow settings
+```
+
+### Saved workflow format
+
+```js
+export const meta = {
+  name: "review_change",
+  description: "Review a change from independent angles",
+  phases: [{ title: "Inspect" }, { title: "Synthesize" }],
+};
+
+phase("Inspect");
+const findings = await parallel([
+  () => agent("Review correctness and edge cases", { label: "correctness", tier: "reviewer" }),
+  () => agent("Review tests and maintainability", { label: "tests", tier: "reviewer" }),
+]);
+
+phase("Synthesize");
+const verdict = await agent(`Synthesize these findings:\n${findings.join("\n\n")}`, {
+  label: "final verdict",
+  tier: "synthesizer",
+});
+return { findings, verdict };
+```

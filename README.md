@@ -35,6 +35,7 @@ Original repository: https://github.com/mitsuhiko/agent-stuff
 | **btw** | Command | Quick side questions without history | ✅ Stable |
 | **powerline-footer** | UI | Custom powerline-style footer bar | ✅ Stable |
 | **session-breakdown** | Command | Session analytics dashboard | ✅ Stable |
+| **workflow** | Tool / Command | Model-routed dynamic workflows with `/workflow` | ⚙️ Beta |
 
 ## Install
 
@@ -43,6 +44,8 @@ Original repository: https://github.com/mitsuhiko/agent-stuff
 ```bash
 pi install npm:pi-agent-extensions
 ```
+
+The published npm package is the unscoped package [`pi-agent-extensions`](https://www.npmjs.com/package/pi-agent-extensions), so no `@scope/` prefix is needed.
 
 All extensions will be available immediately after installation.
 
@@ -108,16 +111,16 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ```bash
 # Update to latest version
-pi update pi-agent-extensions
+pi update npm:pi-agent-extensions
 
 # Or update all packages
-pi --update-packages
+pi update --extensions
 ```
 
 ## Uninstall
 
 ```bash
-pi remove pi-agent-extensions
+pi remove npm:pi-agent-extensions
 ```
 
 ## Troubleshooting
@@ -164,7 +167,7 @@ pi
 
 ## Documentation & Extensions Reference
 
-For in-depth explanations, options, and commands for all 16 extensions, refer to the [Extensions Reference](docs/extensions.md).
+For in-depth explanations, options, and commands for all 17 extensions, refer to the [Extensions Reference](docs/extensions.md).
 
 For installation, manual testing, and setup guides, see the [Documentation Index](docs/README.md).
 
@@ -202,4 +205,3 @@ npm run release:publish -- patch
 ## License
 
 MIT
-
