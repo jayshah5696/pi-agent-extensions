@@ -79,6 +79,9 @@ if [[ -n "${published_version}" ]] && ! version_gt "${new_version}" "${published
   fail "new version ${new_version} is not greater than published version ${published_version}"
 fi
 
+info "Promoting and validating changelog notes"
+node scripts/changelog.mjs promote "${new_version}"
+
 info "Checking package contents"
 npm pack --dry-run
 
@@ -98,7 +101,7 @@ info "Publishing ${PACKAGE_NAME}@${new_version}"
 npm publish --access public
 
 info "Committing release metadata"
-git add package.json package-lock.json
+git add CHANGELOG.md package.json package-lock.json
 git commit -m "chore(release): ${new_version}"
 
 tag="v${new_version}"

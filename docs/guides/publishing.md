@@ -47,13 +47,15 @@ Performs a dry-run check comparing the local version against the published versi
 just release-check
 ```
 
+Before releasing, record user-visible changes under `## [Unreleased]` in `CHANGELOG.md`. The publish command promotes those notes to the new version and validates that release sections are unique and newest-first.
+
 ### Publish a Release
 Publishes the package, bumps the version, creates a Git tag, and pushes to remote. Usage:
 ```bash
 just release patch        # Standard patch bump
 just release minor        # Standard minor bump
 just release major        # Standard major bump
-just release 0.4.5        # Explicit version target
+just release 0.5.1        # Explicit version target
 ```
 
 Alternative helper tasks:
@@ -99,7 +101,7 @@ npm run release:publish -- major
 Explicit version:
 
 ```bash
-npm run release:publish -- 0.4.5
+npm run release:publish -- 0.5.1
 ```
 
 The publish script will:
@@ -108,11 +110,12 @@ The publish script will:
 2. fetch and fast-forward from `origin/main`,
 3. run `npm test`,
 4. bump `package.json` and `package-lock.json` with `npm version --no-git-tag-version`,
-5. run `npm pack --dry-run`,
-6. publish to npm,
-7. commit the version bump,
-8. create a `vX.Y.Z` git tag,
-9. push `main` and tags.
+5. promote `CHANGELOG.md`'s Unreleased notes to the new version and validate its ordering,
+6. run `npm pack --dry-run`,
+7. publish to npm,
+8. commit the changelog and version bump,
+9. create a `vX.Y.Z` git tag,
+10. push `main` and tags.
 
 Set `YES=1` to skip the publish confirmation prompt:
 
@@ -138,10 +141,10 @@ git push origin main --tags
 
 ## If publish fails before commit/tag
 
-The script bumps the version before publishing. If publish fails and you do not want to retry, restore the version files:
+The script bumps the version and promotes the changelog before publishing. If publish fails and you do not want to retry, restore those files:
 
 ```bash
-git checkout -- package.json package-lock.json
+git checkout -- CHANGELOG.md package.json package-lock.json
 ```
 
 ## Package contents
@@ -152,4 +155,4 @@ The npm package contents are controlled by the `files` field in `package.json`:
 ["extensions", "themes", "docs"]
 ```
 
-Screenshots and tests are kept in the repository but are not published to npm unless added to `files`.
+The README showcase under `docs/assets/` is published with the package. Repository-only screenshots under `screenshots/` and tests are not included.

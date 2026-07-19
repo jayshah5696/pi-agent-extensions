@@ -10,7 +10,7 @@ Before testing, install the package locally using Pi's package manager:
 
 ```bash
 # From the repository root
-pi install -l .
+pi install . -l --approve
 ```
 
 To run Pi in a verbose mode for checking loaded extensions:

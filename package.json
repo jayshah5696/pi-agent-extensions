@@ -1,7 +1,7 @@
 {
   "name": "pi-agent-extensions",
   "version": "0.5.0",
-  "description": "Collection of extensions for pi coding agent",
+  "description": "17 extensions and four themes for the Pi coding agent",
   "type": "module",
   "repository": {
     "type": "git",
@@ -20,7 +20,9 @@
     "pi-package",
     "pi",
     "coding-agent",
-    "extensions"
+    "extensions",
+    "multi-agent",
+    "terminal-ui"
   ],
   "license": "MIT",
   "author": {
@@ -71,9 +73,11 @@
     "typescript": "^5.9.3"
   },
   "scripts": {
-    "test": "node --import tsx --test 'tests/**/*.test.ts' 'tests/*.test.ts'",
+    "test": "node --import tsx --test 'tests/**/*.test.ts' 'tests/*.test.ts' && node scripts/changelog.mjs check",
     "test:workflow": "node --import tsx --test 'tests/workflow/**/*.test.ts'",
     "typecheck:workflow": "tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --skipLibCheck --strict extensions/workflow/*.ts tests/workflow/*.ts",
+    "changelog:check": "node scripts/changelog.mjs check",
+    "changelog:promote": "node scripts/changelog.mjs promote",
     "release:check": "./scripts/check-release.sh",
     "release:publish": "./scripts/publish-release.sh"
   },
