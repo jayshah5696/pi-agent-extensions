@@ -36,5 +36,6 @@ export async function hasRequestAuth(
 	model: Model<Api>,
 ): Promise<boolean> {
 	const auth = await modelRegistry.getApiKeyAndHeaders(model);
-	return auth.ok;
+	if (!auth.ok) return false;
+	return Boolean(auth.apiKey || (auth.headers && Object.keys(auth.headers).length > 0));
 }

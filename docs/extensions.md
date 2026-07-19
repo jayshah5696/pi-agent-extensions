@@ -9,13 +9,13 @@ This document provides a comprehensive reference for the 17 extensions included 
 1. [Answer (`/answer`)](#1-answer-answer)
 2. [Ask User (`ask_user`)](#2-ask-user-ask_user)
 3. [BTW (`/btw`)](#3-btw-btw)
-4. [Context (`/context`)](#4-context-context)
+4. [Context (`/context-simple`)](#4-context-context-simple)
 5. [Control (`send_to_session`)](#5-control-send_to_session)
 6. [CWD History (Tracker)](#6-cwd-history-tracker)
 7. [Files (`/files`)](#7-files-files)
 8. [Handoff (`/handoff`)](#8-handoff-handoff)
 9. [Loop (`/loop`)](#9-loop-loop)
-10. [Notify (`notify`)](#10-notify-notify)
+10. [Notify (automatic)](#10-notify-automatic)
 11. [Powerline Footer](#11-powerline-footer)
 12. [Review (`/review`)](#12-review-review)
 13. [Session Breakdown (`/session-breakdown`)](#13-session-breakdown-session-breakdown)
@@ -72,12 +72,12 @@ Ask ephemeral "by the way" questions without polluting your conversation history
 
 ---
 
-## 4. Context (`/context`)
+## 4. Context (`/context-simple`)
 
 Visualizes context window utilization and tracks loaded tools or skills.
 
 *   **Type:** UI Dashboard
-*   **Command:** `/context`
+*   **Command:** `/context-simple`
 *   **Features:**
     *   Renders an ASCII bar chart representing token allocation (System, Tools, Conversation, Free).
     *   Lists all registered extensions and available skills.
@@ -173,12 +173,11 @@ Iterative execution loop that allows Pi to self-correct and work autonomously un
 
 ---
 
-## 10. Notify (`notify`)
+## 10. Notify (automatic)
 
 Desktop notification integrations using OSC 777 escape sequences.
 
-*   **Type:** Tool
-*   **Tool Name:** `notify`
+*   **Type:** Automatic `agent_end` event handler
 *   **Features:**
     *   Zero dependencies, using native terminal OSC 777 sequences.
     *   Fires automatically upon turn completion.
@@ -253,7 +252,7 @@ File-backed task manager supporting claim and status tracking.
 *   **Command:** `/todos`
 *   **Tool Name:** `todo`
 *   **Features:**
-    *   Persists todos locally to `.pi/todos.json`.
+    *   Persists todos locally as Markdown files under `.pi/todos/`.
     *   Interactive task list TUI to create, view, claim, close, and delete items.
 
 ---
