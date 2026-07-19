@@ -14,6 +14,6 @@ Setup, release, and testing guides:
 |-------|-------------|
 | [Manual Testing](guides/manual-testing.md) | Comprehensive manual verification steps for extensions |
 | [Publishing & Task Runner](guides/publishing.md) | Standard NPM release flow and `just` commands |
+| [Screenshot Gallery](guides/screenshot-gallery.md) | Recreate the real Pi usage gallery with isolated profiles, tmux, Freeze, and visual verification |
 | [Vertex AI Setup](guides/vertex-ai-setup.md) | Setting up Google Cloud Vertex AI provider for Pi |
 | [Theme Customization](../themes/CUSTOMIZATION.md) | Creating and adjusting custom terminal color themes |
-

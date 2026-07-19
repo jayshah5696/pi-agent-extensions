@@ -156,3 +156,5 @@ The npm package contents are controlled by the `files` field in `package.json`:
 ```
 
 The README usage gallery under `docs/assets/gallery/` is published with the package. Repository-only screenshots under `screenshots/` and tests are not included.
+
+Follow [Recreating the Extension Usage Gallery](screenshot-gallery.md) when adding or refreshing README screenshots. It covers the isolated Pi profile, live TUI capture, SVG rendering, visual QA, package inclusion, and npm-page verification.

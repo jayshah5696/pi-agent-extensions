@@ -4,6 +4,9 @@ All notable changes to this project are documented here. Release dates match the
 
 ## [Unreleased]
 
+### Added
+- Added a repeatable extension-gallery capture guide covering isolated Pi profiles, realistic demo state, tmux and Freeze rendering, visual and secret-safety checks, npm packaging, registry smoke tests, and exact cleanup.
+
 ## [0.5.2] - 2026-07-19
 
 ### Added
