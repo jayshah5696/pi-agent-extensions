@@ -1,103 +1,142 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this project are documented here. Release dates match the npm registry publication dates.
 
 ## [Unreleased]
 
-## [0.5.0] - 2026-07-18
+### Added
+- Added a real Ghostty screenshot captured from an isolated npm installation, showing all 17 extensions and four bundled themes. The asset lives under `docs/assets/` so it is included in the npm package.
+
+### Changed
+- Redesigned the README around the canonical `pi install npm:pi-agent-extensions` path and added direct package, runtime, update, removal, and verification guidance.
+- Reconciled the changelog with every version published to npm from `0.1.0` through `0.5.0`, including previously missing releases and corrected publication dates.
+- Added changelog validation and automatic promotion of Unreleased notes to the release version in the publishing workflow.
+
+## [0.5.0] - 2026-07-19
 
 ### Added
-- Added release helper scripts and `just` recipes for repeatable npm publishing (`release:check`, `release:publish`, `just release patch`, etc.).
-- Added the `/workflow` dynamic-workflow extension with Lean/Balanced/Deep/Custom model profiles, scoped searchable model routing, generated-script approval, tolerant generated-script normalization, trusted-project enforcement, background execution, saved JavaScript workflows, durable history, and journaled pause/resume.
-- Added a unified interactive workflow run browser with rendered results, phase and agent drill-down, visible token/cost usage, prompt and recent tool-activity capture, Markdown/visual-HTML exports, reusable-script saving, and live pause/resume/stop controls.
-- Added `/workflow help` as an in-Pi quick-start and operations guide, plus a read-only `/workflow doctor` readiness check that makes no model calls.
+- Added the `/workflow` dynamic-workflow extension with Lean, Balanced, Deep, and Custom profiles; role-based model routing; searchable model setup; generated-script approval; trusted-project enforcement; background execution; saved JavaScript workflows; durable history; and journaled pause/resume.
+- Added an interactive workflow run browser with rendered results, phase and agent drill-down, token and cost usage, prompt and recent tool-activity capture, Markdown and self-contained HTML exports, reusable-script saving, and live run controls.
+- Added `/workflow help` and the side-effect-free `/workflow doctor` readiness check.
 
 ### Fixed
-- Workflow approval now opens on the complete line-numbered JavaScript, requires an explicit `y`, and keeps route/security details on a separate summary tab.
-- Background workflow failures no longer trigger a parent-model turn, preventing automatic retry and repeated approval loops.
-- Generated `agent(persona)(task)`, `phase(title, callback)`, plain `run()` wrappers, and trailing `run();` forms now execute and fail inside the managed workflow instead of producing zero-agent errors or crashing Pi with an orphaned rejection.
+- Workflow approval now opens on the complete line-numbered JavaScript and requires an explicit `y` before execution.
+- Background workflow failures no longer wake the parent model into an automatic retry and repeated approval loop.
+- Generated `agent(persona)(task)`, `phase(title, callback)`, plain `run()` wrappers, and trailing `run();` scripts now execute inside the managed workflow.
+- Model setup now respects Pi's enabled-model scope, and exact model patterns no longer expand into similarly named variants.
+
+### Changed
+- Raised the supported Pi core packages to `0.80.10` or newer and Node.js to `22.19.0` or newer.
+- Clarified that the published package is the unscoped `npm:pi-agent-extensions` source.
+
+## [0.4.6] - 2026-06-24
+
+### Fixed
+- Migrated Pi AI imports to the public compatibility entrypoint required by Pi `0.80.x`.
+
+## [0.4.5] - 2026-06-14
+
+### Added
+- Added repeatable npm release scripts and `just` commands for tests, package inspection, version checks, and publishing.
+- Added a split-pane sessions picker with live semantic previews and a repository screenshot.
+
+### Changed
+- Migrated the sessions extension and package peers to the `@earendil-works` Pi packages.
+- Consolidated the documentation into the current README, extensions reference, manual-testing guide, and publishing guide.
+- Removed the bundled NVIDIA NIM extension after Pi gained standard provider support.
 
 ## [0.4.4] - 2026-05-31
 
 ### Added
-- **Sessions**: `/sessions` now opens a full-window split-pane picker with the session list on the left and a live selected-session preview on the right.
-- **Sessions preview rendering**: Added Pi-like semantic preview blocks for user, assistant, tool, bash, thinking, summary, and error content.
-- **Sessions preview controls**: Added preview scrolling with `PgUp`/`PgDn` and `Ctrl+u`/`Ctrl+d`, `t` to expand/compact tool activity, and `h` to show/hide thinking.
-- **Sessions preview screenshot**: Added repository screenshot artifacts for the full-window sessions picker.
+- Added the full-window `/sessions` picker with a session list and live selected-session preview.
+- Added semantic preview blocks for user, assistant, tool, bash, thinking, summary, and error content.
+- Added preview scrolling, tool-activity expansion, thinking visibility controls, debounced loading, stale-load protection, and preview caching.
 
-### Changed
-- **Sessions**: Tool activity is collapsed by default in previews to keep historical sessions readable; thinking blocks are hidden by default.
-- **Sessions**: Added debounced preview loading, stale-load protection, and preview caching keyed by session path and modified time.
+## [0.4.3] - 2026-04-28
 
 ### Fixed
-- **Handoff**: Fixed stale command context usage after session replacement.
-- **Powerline footer / BTW**: Polished stale footer/session behavior and improved the `/btw` overlay experience.
+- Fixed handoff using a stale command context after session replacement.
+
+## [0.4.2] - 2026-04-26
+
+### Fixed
+- Prevented the powerline footer from overflowing narrow terminals.
+- Fixed stale footer and session state and polished the `/btw` overlay.
 
 ## [0.4.1] - 2026-04-09
 
 ### Fixed
-- **Powerline footer**: Context percentage now shows max 1 decimal (e.g. `8.1%` instead of `8.0832%`). Whole numbers show no decimal (`50%`).
-- **Powerline footer**: Cost always displays — shows `<$0.01` for tiny costs instead of hiding.
+- Limited the footer context percentage to one decimal place and removed unnecessary trailing decimals.
+- Kept cost visible for very small sessions by displaying `<$0.01`.
 
 ## [0.4.0] - 2026-04-08
 
 ### Added
-- **New extension: Powerline Footer** — Custom powerline-style footer bar replacing the default pi footer.
-  - Git branch + working tree status (staged/unstaged/untracked/ahead/behind)
-  - Model name + context usage with color-coded percentage (green/yellow/red)
-  - Estimated session cost from model pricing
-  - Session duration timer
-  - Python virtualenv / conda environment detection
-  - Extension statuses and session name display
-  - Auto-refreshes every 10 seconds via async git commands
+- Added the powerline footer with asynchronous git status, model, context, cost, session-duration, environment, and extension indicators.
 
 ### Fixed
-- **Security: Path traversal in control extension** — Replaced blacklist `.includes()` checks with strict allowlist regex (`/^[a-zA-Z0-9_-]+$/` for sessionId, `/^[a-zA-Z0-9_ -]+$/` for alias).
-- **Security: Terminal escape injection in notify** — Sanitized title/body inputs in OSC 777 escape sequences by stripping control characters.
-
-### Changed
-- Updated README and AGENTS.md with powerline-footer and session-breakdown documentation.
-- Closed 21 duplicate/already-fixed Sentinel security PRs.
+- Replaced blacklist path validation in the control extension with strict allowlists.
+- Sanitized notification title and body input to prevent terminal escape injection.
 
 ## [0.3.6] - 2026-04-05
 
 ### Changed
-- **`/btw`**: Uses the currently selected model instead of auto-selecting cheap models. Simpler, more predictable.
+- Updated `/btw` to use the currently selected model instead of automatically choosing a cheaper model.
 
 ## [0.3.5] - 2026-04-05
 
 ### Added
-- **New extension: `/btw`** — Ask quick side questions without polluting conversation history.
-  - Ephemeral overlay: question and answer are never persisted to the session.
-  - Full conversation context visibility but no tool access (lightweight, read-only).
-  - Scrollable answer overlay with keyboard navigation (↑↓/j/k, PgUp/PgDn).
-  - Dismiss with Esc, Space, or q.
-  - Uses the currently selected model (same quality as your session).
-  - Non-UI fallback prints answer to stdout.
-  - Zero context cost — no tokens wasted on history.
+- Added `/btw`, an ephemeral side-question overlay that uses conversation context without persisting the question or answer to the session.
 
 ## [0.3.4] - 2026-04-05
 
 ### Fixed
-- Migrated `todos` and `files` extensions from removed `getEditorKeybindings()` / `EditorKeybindingsManager` to `getKeybindings()` / `KeybindingsManager` (pi-tui 0.65.0).
-- Updated all legacy keybinding names to namespaced IDs (`selectUp` → `tui.select.up`, `expandTools` → `app.tools.expand`, etc.).
-- Fixed `keyHint()` calls in `todos` and `sessions` to use namespaced keybinding IDs.
-- Fixed stale `session_switch` reference in `docs/mitsuhiko-integration-analysis.md`.
+- Migrated extension keybindings to the namespaced Pi TUI `0.65.0` APIs.
+- Updated todos, files, sessions, and documentation for the current keybinding names.
 
 ## [0.3.3] - 2026-04-04
 
 ### Fixed
-- Updated extensions for the latest Pi API changes.
-- Replaced deprecated `ctx.modelRegistry.getApiKey(...)` usage with the new `getApiKeyAndHeaders(...)` flow.
-- Forwarded request headers alongside API keys when calling `complete(...)`.
-- Migrated extensions off `session_switch` to `session_start` where appropriate.
-- Updated loop compaction to the latest `compact(...)` signature.
+- Updated extensions for the current Pi API, including provider authentication, request headers, session events, and compaction signatures.
+
+## [0.3.2] - 2026-02-15
+
+### Fixed
+- Renamed the context command to `/context-simple` to avoid a command-name conflict.
+
+## [0.3.1] - 2026-02-15
 
 ### Changed
-- Added shared auth helpers for extension model requests.
-- Bumped package version to `0.3.3` and published to npm.
+- Switched NVIDIA NIM authentication to Pi's standard OAuth flow.
+- Expanded the whimsical message mixer while restoring the full original message collection.
 
-## [0.3.2] - 2026-04-04
+## [0.3.0] - 2026-02-12
 
-### Previous
-- Initial published release before the Pi API compatibility update.
+### Added
+- Added the NVIDIA NIM provider extension with authenticated model setup, scoped model synchronization, validation, documentation, and tests.
+
+## [0.2.3] - 2026-02-07
+
+### Fixed
+- Deferred whimsical shutdown so the final notification can render before Pi exits.
+
+## [0.2.2] - 2026-02-07
+
+### Added
+- Added README update, uninstall, troubleshooting, and npm-versus-local testing guidance.
+
+## [0.2.1] - 2026-02-07
+
+### Fixed
+- Routed whimsical exit messages through Pi's UI notification API instead of writing directly to the console.
+
+## [0.2.0] - 2026-02-07
+
+### Added
+- Expanded the package from three extensions to 14 with notifications, context, files, review, loop, answers, control, directory history, session analytics, todos, and whimsical UI.
+- Added four bundled themes and comprehensive installation, deployment, publishing, testing, quick-start, and customization documentation.
+
+## [0.1.0] - 2026-02-06
+
+### Added
+- Published the initial npm package with the sessions picker, structured `ask_user` tool, and goal-driven handoff command.

@@ -1,19 +1,23 @@
 # pi-agent-extensions
 
-A collection of extensions for the [pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent).
+[![npm version](https://img.shields.io/npm/v/pi-agent-extensions?color=cb3837&logo=npm)](https://www.npmjs.com/package/pi-agent-extensions)
+[![Pi 0.80.10+](https://img.shields.io/badge/Pi-0.80.10%2B-67e8f9)](https://github.com/earendil-works/pi)
+[![Node 22.19+](https://img.shields.io/badge/Node-%3E%3D22.19.0-5fa04e?logo=node.js&logoColor=white)](package.json)
+[![MIT license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-## Acknowledgments
+A single install for **17 extensions and four themes** for the [Pi coding agent](https://github.com/earendil-works/pi): session tools, structured questions, handoffs, multi-agent workflows, review utilities, analytics, UI enhancements, and more.
 
-This project includes extensions adapted from [mitsuhiko/agent-stuff](https://github.com/mitsuhiko/agent-stuff) (Apache 2.0 / MIT License).
+## Install
 
-**Special thanks to Armin Ronacher ([@mitsuhiko](https://github.com/mitsuhiko))** for creating and open-sourcing these excellent production-ready extensions:
-- `notify.ts` - Desktop notifications via OSC 777
-- `context.ts` - Context breakdown dashboard  
-- `files.ts` - Unified file browser with git integration
-- `review.ts` - Code review system
-- `loop.ts` - Iterative execution loop
+```bash
+pi install npm:pi-agent-extensions
+```
 
-Original repository: https://github.com/mitsuhiko/agent-stuff
+The npm package is unscoped: use `npm:pi-agent-extensions`, with no `@scope/` prefix. Requires Pi `0.80.10` or newer and Node.js `22.19.0` or newer.
+
+![Pi loading all 17 extensions and four themes from npm:pi-agent-extensions in Ghostty](https://raw.githubusercontent.com/jayshah5696/pi-agent-extensions/main/docs/assets/pi-agent-extensions-showcase.png)
+
+The screenshot is a real Pi startup from an isolated installation of the published npm package. Press `Ctrl+O` at startup to show the full loaded-resource list.
 
 ## Extensions
 
@@ -37,71 +41,50 @@ Original repository: https://github.com/mitsuhiko/agent-stuff
 | **session-breakdown** | Command | Session analytics dashboard | ✅ Stable |
 | **workflow** | Tool / Command | Model-routed dynamic workflows with `/workflow` | ⚙️ Beta |
 
-## Install
+## Verify Installation
 
-### From npm (Recommended)
+Confirm that Pi registered the package:
 
 ```bash
-pi install npm:pi-agent-extensions
+pi list
+# User packages:
+#   npm:pi-agent-extensions
 ```
 
-The published npm package is the unscoped package [`pi-agent-extensions`](https://www.npmjs.com/package/pi-agent-extensions), so no `@scope/` prefix is needed.
+Start Pi and press `Ctrl+O` to expand the startup resources. The `[Extensions]` section should contain all 17 `pi-agent-extensions:*` entries shown above.
 
-All extensions will be available immediately after installation.
-
-### From Source (For Development)
+Useful smoke tests:
 
 ```bash
-# Clone the repository
+pi
+/sessions
+/workflow help
+```
+
+`/sessions` opens the session picker. `/workflow help` renders the workflow guide without making a model call.
+
+## Development Installation
+
+```bash
 git clone https://github.com/jayshah5696/pi-agent-extensions.git
 cd pi-agent-extensions
 
-# Install globally
+# Install globally from this checkout
 pi install .
 
-# Or install to specific project
-cd ~/your-project
-pi install -l /path/to/pi-agent-extensions
+# Or install only for the current project
+pi install /path/to/pi-agent-extensions -l --approve
 ```
 
-### Quick Test Without Installing
+`--approve` trusts project-local code. Use it only after reviewing the checkout you are installing.
+
+Load individual extensions without installing the package:
 
 ```bash
 pi -e /path/to/pi-agent-extensions/extensions/sessions/index.ts \
    -e /path/to/pi-agent-extensions/extensions/ask-user/index.ts \
    -e /path/to/pi-agent-extensions/extensions/handoff/index.ts
 ```
-
-## Verify Installation
-
-After installing, start pi and look for the startup message:
-
-```
-Extensions: sessions, ask_user, handoff
-```
-
-**Test sessions:**
-```bash
-pi
-/sessions
-```
-
-**Test ask_user:**
-```bash
-pi
-> Ask me which database I prefer: PostgreSQL or SQLite
-```
-
-The LLM should call the `ask_user` tool and show you options to select.
-
-**Test handoff:**
-```bash
-pi
-# Have a conversation first, then:
-/handoff implement the next feature with proper tests
-```
-
-You'll see a loader while context is extracted, then an editor to review the handoff prompt.
 
 ## Changelog
 
@@ -201,6 +184,12 @@ npm test
 npm run release:check
 npm run release:publish -- patch
 ```
+
+## Acknowledgments
+
+This project includes extensions adapted from [mitsuhiko/agent-stuff](https://github.com/mitsuhiko/agent-stuff) (Apache 2.0 / MIT License).
+
+Special thanks to Armin Ronacher ([@mitsuhiko](https://github.com/mitsuhiko)) for creating and open-sourcing the original notification, context, file-browser, review, and loop extensions.
 
 ## License
 

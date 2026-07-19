@@ -41,6 +41,7 @@ npm test
 
 local_version="$(node -p "require('./package.json').version")"
 info "Local package version: ${local_version}"
+node scripts/changelog.mjs check "${local_version}"
 
 published_version="$(npm view "${PACKAGE_NAME}" version 2>/dev/null || true)"
 if [[ -n "${published_version}" ]]; then
