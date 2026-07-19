@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Release dates match the
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-07-19
+
 ### Added
 - Added a real usage gallery captured from an isolated npm installation, covering every interactive extension and documenting the background-only extensions.
 

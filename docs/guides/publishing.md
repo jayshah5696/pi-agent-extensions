@@ -155,4 +155,4 @@ The npm package contents are controlled by the `files` field in `package.json`:
 ["extensions", "themes", "docs"]
 ```
 
-The README showcase under `docs/assets/` is published with the package. Repository-only screenshots under `screenshots/` and tests are not included.
+The README usage gallery under `docs/assets/gallery/` is published with the package. Repository-only screenshots under `screenshots/` and tests are not included.
