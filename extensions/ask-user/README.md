@@ -36,6 +36,7 @@ LLM: Great! Creating microservice with PostgreSQL...
 ✅ **Custom answers** - "Other" option always available
 ✅ **Multiple questions** - Batch related questions
 ✅ **Print mode support** - Works in non-interactive mode
+✅ **RPC mode support** - Works over `pi --mode rpc` (e.g. cc-connect) via select/input dialogs
 ✅ **Session persistence** - Q&A stored in session history
 
 ## Question Types
@@ -95,6 +96,16 @@ pi -p @.pi/pending-questions.json "I prefer PostgreSQL"
 pi -c
 ```
 
+## RPC Mode
+
+When pi runs with `--mode rpc` (stdout is not a TTY), the UI is proxied to the
+host application, which only supports simple dialogs. In this mode:
+
+- Option questions use `ctx.ui.select()` — option descriptions are folded into
+  the label text, and an "Other" option is appended
+- "Other" and text questions use `ctx.ui.input()` as a follow-up
+- Multiple questions are asked sequentially
+
 ## Implementation Status
 
 **v0.1.0 - Current**
@@ -102,6 +113,7 @@ pi -c
 - ✅ Core tool logic
 - ✅ Schema validation
 - ✅ Print mode (pending file)
+- ✅ RPC mode (select/input dialogs)
 - ✅ Basic interactive mode (ctx.ui helpers)
 - ✅ Custom rendering
 - ⏸️ Custom TUI components (awaiting feedback)
