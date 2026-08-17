@@ -117,7 +117,7 @@ Interactive fuzzy file browser with deep Git integration.
 *   **Command:** `/files`
 *   **Shortcuts:**
     *   `Ctrl+Shift+O`: Open files browser
-    *   `Ctrl+Shift+F`: Reveal latest modified file in OS Finder
+    *   `Ctrl+Shift+E`: Reveal latest modified file in OS Finder
     *   `Ctrl+Shift+R`: macOS Quick Look for selected file
     *   `Ctrl+Shift+D` / Action: Open file diff in VS Code
 *   **Features:**
