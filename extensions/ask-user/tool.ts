@@ -24,10 +24,16 @@ export async function executeAskUser(
 
 /**
  * Detect which mode we're running in
+ *
+ * RPC mode: the UI is proxied to a remote host (e.g. cc-connect) which only
+ * supports the simple dialog methods (select/confirm/input). In particular
+ * ctx.ui.custom() is NOT supported there (it resolves to undefined
+ * immediately, which would look like an instant cancel). The real TUI is
+ * only available when stdout is an actual terminal.
  */
 function detectMode(ctx: ExtensionContext): "interactive" | "print" | "rpc" {
   if (!ctx.hasUI) return "print";
-  // TODO: Detect RPC mode when implemented
+  if (!process.stdout.isTTY) return "rpc";
   return "interactive";
 }
 
@@ -76,14 +82,78 @@ async function executePrint(
 }
 
 /**
- * RPC mode - return structured request
+ * RPC mode - use simple proxied dialogs (select/input)
+ *
+ * The RPC UI protocol has no "custom component" concept, so the TUI option
+ * picker is replaced with ctx.ui.select(). The select method only carries
+ * plain strings, so option descriptions are folded into the label text.
+ * "Other" is offered as an extra option and followed up with ctx.ui.input(),
+ * mirroring the interactive flow.
  */
+const OTHER_LABEL = "Other (type your answer)";
+
 async function executeRpc(
   params: AskUserParams,
   ctx: ExtensionContext,
 ): Promise<AskUserResult> {
-  // TODO: Implement RPC mode
-  throw new Error("RPC mode not yet implemented");
+  const answers: Answer[] = [];
+
+  for (const question of params.questions) {
+    const answer = await askQuestionRpc(question, ctx);
+    if (!answer) {
+      return { answered: false, answers: [], cancelled: true };
+    }
+    answers.push(answer);
+  }
+
+  return { answered: true, answers };
+}
+
+async function askQuestionRpc(
+  question: Question,
+  ctx: ExtensionContext,
+): Promise<Answer | null> {
+  const title = question.header
+    ? `${question.header}\n\n${question.question}`
+    : question.question;
+
+  // No options -> plain text input question
+  if (!question.options?.length) {
+    const value = await ctx.ui.input(question.header ?? "Question", question.question);
+    if (value === undefined || value.trim() === "") return null;
+    return { question: question.question, answer: value, wasCustom: true };
+  }
+
+  // Options -> select dialog (descriptions appended to labels)
+  const labels = question.options.map(
+    (opt: NonNullable<Question["options"]>[number]) =>
+      opt.description ? `${opt.label} — ${opt.description}` : opt.label,
+  );
+  labels.push(OTHER_LABEL);
+
+  const selected = await ctx.ui.select(title, labels);
+  if (selected === undefined) return null;
+
+  if (selected === OTHER_LABEL) {
+    const value = await ctx.ui.input(question.header ?? "Question", question.question);
+    if (value === undefined || value.trim() === "") return null;
+    return {
+      question: question.question,
+      answer: value,
+      selectedOption: OTHER_LABEL,
+      wasCustom: true,
+    };
+  }
+
+  const idx = labels.indexOf(selected);
+  const label =
+    idx >= 0 && idx < question.options.length ? question.options[idx].label : selected;
+  return {
+    question: question.question,
+    answer: label,
+    selectedOption: label,
+    wasCustom: false,
+  };
 }
 
 /**

@@ -34,7 +34,7 @@ Guidelines:
         questions: params.questions,
         answers: result.answers,
         answeredAt: Date.now(),
-        mode: ctx.hasUI ? "interactive" : "print",
+        mode: !ctx.hasUI ? "print" : process.stdout.isTTY ? "interactive" : "rpc",
         metadata: params.metadata,
       };
 
