@@ -7,6 +7,10 @@
 
 A single install for **17 extensions and four themes** for the [Pi coding agent](https://github.com/earendil-works/pi): session tools, structured questions, handoffs, multi-agent workflows, review utilities, analytics, UI enhancements, and more.
 
+## Read the story
+
+I wrote about building this setup in [Stop Renting Your Workflow: Building a Custom AI Coding Agent with Pi](https://jayshah.dev/posts/stop-renting-your-workflow/), including why I chose Pi, how I use extensions, and what I value about controlling my coding workflow.
+
 ## Install
 
 ```bash
