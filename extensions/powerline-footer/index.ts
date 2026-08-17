@@ -12,6 +12,7 @@ class PowerlineFooter implements Component {
 	private disposed = false;
 	private cwd: string;
 	private lastRenderedLine = "";
+	private lastRenderedMinute = -1;
 	private lastShortDir: string;
 	private lastModelShort = "unknown";
 	private lastContextInfo = "";
@@ -35,7 +36,11 @@ class PowerlineFooter implements Component {
 		this.interval = setInterval(() => {
 			if (this.disposed) return;
 			this.fetchAsyncData();
-			this.tui.requestRender();
+			const currentMinute = new Date().getMinutes();
+			if (currentMinute !== this.lastRenderedMinute) {
+				this.lastRenderedMinute = currentMinute;
+				this.tui.requestRender();
+			}
 		}, 10000);
 	}
 
@@ -75,8 +80,11 @@ class PowerlineFooter implements Component {
 					if (untracked > 0) statusExtras += `?${untracked}`;
 					if (ahead > 0) statusExtras += `⇡${ahead}`;
 					if (behind > 0) statusExtras += `⇣${behind}`;
+					const previousExtras = this.gitStatusExtras;
 					this.gitStatusExtras = statusExtras;
-					this.tui.requestRender();
+					if (statusExtras !== previousExtras) {
+						this.tui.requestRender();
+					}
 				});
 			});
 		} else {
@@ -277,6 +285,7 @@ class PowerlineFooter implements Component {
 
 		const fittedLine = this.fitToWidth(line, width);
 		this.lastRenderedLine = fittedLine;
+		this.lastRenderedMinute = new Date().getMinutes();
 		return [fittedLine];
 	}
 }

@@ -121,4 +121,130 @@ describe("Powerline Footer Extension", () => {
     assert.ok(visibleWidth(footer.render(120)[0]) <= 120);
     assert.ok(visibleWidth(footer.render(40)[0]) <= 40);
   });
+
+  it("does not call requestRender when git status extras have not changed", async () => {
+    const sessionStart = events.get("session_start");
+    let footerFactory: any;
+    const ctx = {
+      hasUI: true,
+      cwd: "/tmp",
+      model: {},
+      modelRegistry: { isUsingOAuth: () => false },
+      getContextUsage: () => null,
+      sessionManager: { getSessionName: () => "", getEntries: () => [] },
+      ui: { setFooter: (f: any) => { footerFactory = f; } }
+    };
+
+    await sessionStart?.({}, ctx);
+
+    let renderCallCount = 0;
+    const tui = { requestRender: () => { renderCallCount++; } };
+    const footerData = { getGitBranch: () => undefined, getExtensionStatuses: () => new Map() };
+
+    const footer = footerFactory!(tui, {}, footerData);
+
+    footer.render(120);
+    const initialRenderCount = renderCallCount;
+
+    // Branch is undefined so fetchAsyncData sets gitStatusExtras = "" (unchanged)
+    (footer as any).fetchAsyncData();
+
+    assert.equal(renderCallCount, initialRenderCount);
+    footer.dispose();
+  });
+
+  it("calls requestRender when the clock minute changes", async () => {
+    const sessionStart = events.get("session_start");
+    let footerFactory: any;
+    const ctx = {
+      hasUI: true,
+      cwd: "/tmp",
+      model: {},
+      modelRegistry: { isUsingOAuth: () => false },
+      getContextUsage: () => null,
+      sessionManager: { getSessionName: () => "", getEntries: () => [] },
+      ui: { setFooter: (f: any) => { footerFactory = f; } }
+    };
+
+    await sessionStart?.({}, ctx);
+
+    let renderCallCount = 0;
+    const tui = { requestRender: () => { renderCallCount++; } };
+    const footerData = { getGitBranch: () => undefined, getExtensionStatuses: () => new Map() };
+
+    // Mock setInterval before creating footer to capture the callback
+    // and prevent a real 10s timer from holding the event loop open
+    let intervalCb: any;
+    const originalSetInterval = global.setInterval;
+    (global.setInterval as any) = (cb: any) => { intervalCb = cb; return 123; };
+
+    try {
+        const footer = footerFactory!(tui, {}, footerData);
+
+        // Render once to set lastRenderedMinute to current minute
+        footer.render(120);
+        const countBefore = renderCallCount;
+
+        // Interval fires but minute hasn't changed — no requestRender
+        intervalCb();
+        assert.equal(renderCallCount, countBefore);
+
+        // Simulate a minute change by forcing lastRenderedMinute to a stale value
+        (footer as any).lastRenderedMinute = -2;
+
+        intervalCb();
+        assert.equal(renderCallCount, countBefore + 1);
+
+        footer.dispose();
+    } finally {
+        global.setInterval = originalSetInterval;
+    }
+  });
+
+  it("dispose clears the interval and prevents further requestRender calls", async () => {
+    const sessionStart = events.get("session_start");
+    let footerFactory: any;
+    const ctx = {
+      hasUI: true,
+      cwd: "/tmp",
+      model: {},
+      modelRegistry: { isUsingOAuth: () => false },
+      getContextUsage: () => null,
+      sessionManager: { getSessionName: () => "", getEntries: () => [] },
+      ui: { setFooter: (f: any) => { footerFactory = f; } }
+    };
+
+    await sessionStart?.({}, ctx);
+
+    let renderCallCount = 0;
+    const tui = { requestRender: () => { renderCallCount++; } };
+    const footerData = { getGitBranch: () => undefined, getExtensionStatuses: () => new Map() };
+
+    let intervalCleared = false;
+    const originalClearInterval = global.clearInterval;
+    (global.clearInterval as any) = () => { intervalCleared = true; };
+
+    let intervalCb: any;
+    const originalSetInterval = global.setInterval;
+    (global.setInterval as any) = (cb: any) => { intervalCb = cb; return 123; };
+
+    try {
+        const footer = footerFactory!(tui, {}, footerData);
+
+        footer.dispose();
+
+        assert.ok(intervalCleared);
+        assert.equal((footer as any).interval, undefined);
+
+        // Interval callback after dispose should be a no-op
+        const countBefore = renderCallCount;
+        (footer as any).lastRenderedMinute = -2;
+        intervalCb();
+
+        assert.equal(renderCallCount, countBefore);
+    } finally {
+        global.clearInterval = originalClearInterval;
+        global.setInterval = originalSetInterval;
+    }
+  });
 });
