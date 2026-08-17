@@ -431,7 +431,7 @@ export default function whimsicalExtension(pi: ExtensionAPI) {
     description: "Open chaos mixer + spinner tuner",
     handler: async (args, ctx) => {
       await ensureStateLoaded();
-      const sub = (args[0] ?? "").toLowerCase();
+      const sub = (args ?? "").trim().toLowerCase().split(/\s+/)[0] ?? "";
 
       if (sub === "on") {
         state.enabled = true;
