@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Release dates match the
 
 ## [Unreleased]
 
+### Fixed
+- Fixed `/whimsy` subcommand parsing treating args as a char array instead of a string (#50).
+- Fixed the files extension registering Ctrl+Shift+F, which conflicted with Pi's built-in transcript search. Reassigned to Ctrl+Shift+E (#48, thanks @Hanserwei).
+- Implemented RPC mode for `ask_user` so option questions work under cc-connect / `pi --mode rpc` instead of silently cancelling. Uses `ctx.ui.select()` and `ctx.ui.input()` dialogs with an "Other" free-text option (#47, thanks @Duliy).
+- Reduced unnecessary `requestRender` calls in the powerline footer (#51).
+
+### Changed
+- Updated the files extension shortcut documentation to reflect the Ctrl+Shift+E binding.
+- Added article reference to README.
+
 ## [0.5.2] - 2026-07-19
 
 ### Added
