@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Release dates match the
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-08-17
+
 ### Fixed
 - Fixed `/whimsy` subcommand parsing treating args as a char array instead of a string (#50).
 - Fixed the files extension registering Ctrl+Shift+F, which conflicted with Pi's built-in transcript search. Reassigned to Ctrl+Shift+E (#48, thanks @Hanserwei).
