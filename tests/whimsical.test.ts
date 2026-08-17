@@ -1,5 +1,8 @@
-import { describe, it, before } from "node:test";
+import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
+import os from "node:os";
+import path from "node:path";
+import fs from "node:fs/promises";
 import whimsicalExtension from "../extensions/whimsical/index.js";
 import { GOODBYE_MESSAGES_BY_BUCKET } from "../extensions/whimsical/messages.js";
 
@@ -11,8 +14,13 @@ describe("Whimsical Extension", () => {
   let commands: Map<string, CommandHandler>;
   let events: Map<string, EventHandler>;
   let mockPi: any;
+  let originalHome: string | undefined;
+  let tmpHome: string;
 
-  before(() => {
+  before(async () => {
+    originalHome = process.env.HOME;
+    tmpHome = await fs.mkdtemp(path.join(os.tmpdir(), "whimsy-test-"));
+    process.env.HOME = tmpHome;
     commands = new Map();
     events = new Map();
     
@@ -34,6 +42,15 @@ describe("Whimsical Extension", () => {
 
     // Load the extension
     whimsicalExtension(mockPi);
+  });
+
+  after(async () => {
+    if (originalHome !== undefined) {
+      process.env.HOME = originalHome;
+    } else {
+      delete process.env.HOME;
+    }
+    await fs.rm(tmpHome, { recursive: true, force: true });
   });
 
   it("registers /whimsy, /exit, and /bye commands", () => {
@@ -95,5 +112,87 @@ describe("Whimsical Extension", () => {
 
     await shutdownHandler?.({}, mockCtx);
     assert.equal(cleared, 1);
+  });
+
+  it("handles /whimsy on", async () => {
+    const whimsyHandler = commands.get("whimsy");
+    assert.ok(whimsyHandler);
+    const mockCtx = {};
+    const result = await whimsyHandler("on", mockCtx);
+    assert.equal(result, "Whimsy enabled.");
+  });
+
+  it("handles /whimsy off", async () => {
+    const whimsyHandler = commands.get("whimsy");
+    assert.ok(whimsyHandler);
+    let cleared = 0;
+    const mockCtx = {
+      hasUI: true,
+      ui: {
+        setWorkingMessage: (message?: string) => {
+          assert.equal(message, undefined);
+          cleared += 1;
+        },
+      },
+    };
+    const result = await whimsyHandler("off", mockCtx);
+    assert.equal(result, "Whimsy disabled.");
+    assert.equal(cleared, 1);
+  });
+
+  it("handles /whimsy status", async () => {
+    const whimsyHandler = commands.get("whimsy");
+    assert.ok(whimsyHandler);
+    const mockCtx = {};
+    const result = await whimsyHandler("status", mockCtx);
+    assert.ok(typeof result === "string");
+    assert.ok(result.includes("off") || result.includes("on"));
+  });
+
+  it("handles /whimsy reset", async () => {
+    const whimsyHandler = commands.get("whimsy");
+    assert.ok(whimsyHandler);
+    const mockCtx = {};
+    const result = await whimsyHandler("reset", mockCtx);
+    assert.ok(typeof result === "string");
+    assert.ok(result.includes("Whimsy reset:"));
+  });
+
+  it("handles /whimsy with no args and no UI", async () => {
+    const whimsyHandler = commands.get("whimsy");
+    assert.ok(whimsyHandler);
+    const mockCtx = { hasUI: false };
+    const result = await whimsyHandler("", mockCtx);
+    assert.ok(typeof result === "string");
+    assert.ok(result.includes("Use interactive mode"));
+  });
+
+  it("handles /whimsy with extra whitespace", async () => {
+    const whimsyHandler = commands.get("whimsy");
+    assert.ok(whimsyHandler);
+    let cleared = 0;
+    const mockCtx = {
+      hasUI: true,
+      ui: {
+        setWorkingMessage: (message?: string) => {
+          assert.equal(message, undefined);
+          cleared += 1;
+        },
+      },
+    };
+    const result = await whimsyHandler("  off  ", mockCtx);
+    assert.equal(result, "Whimsy disabled.");
+    assert.equal(cleared, 1);
+  });
+
+  it("handles /whimsy with undefined args", async () => {
+    const whimsyHandler = commands.get("whimsy");
+    assert.ok(whimsyHandler);
+    const mockCtx = { hasUI: false };
+    // TypeScript might complain if we pass undefined directly because of type signature,
+    // but at runtime it can happen.
+    const result = await whimsyHandler(undefined as any, mockCtx);
+    assert.ok(typeof result === "string");
+    assert.ok(result.includes("Use interactive mode"));
   });
 });
