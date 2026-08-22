@@ -46,7 +46,7 @@ extensions/
 
 **Sessions** (`extensions/sessions/`): Loads sessions for the current project, supports multi-token substring filtering across name/id/cwd/first-message fields. Uses `SelectList` TUI component or stdout in print mode.
 
-**Ask User** (`extensions/ask-user/`): LLM-callable tool with TypeBox-validated input schema. Three modes — interactive (TUI `Editor`/`SelectList`), print (writes `.pi/pending-questions.json` for async response), and RPC. Always includes an "Other" free-text option. Answers persisted to session entries.
+**Ask User** (`extensions/ask-user/`): LLM-callable tool with TypeBox-validated input schema. Uses Pi's built-in wrapping selector/input/editor dialogs in TUI and RPC modes; print mode writes `.pi/pending-questions.json` for async response. Always includes an "Other" free-text option. Answers are persisted to session entries. Interactive multi-select remains deferred.
 
 **Handoff** (`extensions/handoff/`): Uses LLM completion to extract structured context (relevant files, commands, decisions, open questions) from conversation history. Validates extracted files against actual conversation text to prevent hallucinations. Configurable via `.pi/settings.json` under `handoff` key. Supports retry logic on JSON parse failure.
 

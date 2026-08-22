@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Release dates match the
 
 ## [Unreleased]
 
+### Fixed
+- Fixed `ask_user` interactive questions, option labels, and descriptions being truncated instead of wrapped in narrow terminals by using Pi's built-in wrapping dialogs.
+
+### Changed
+- Simplified `ask_user` by removing its hand-rolled picker and using Pi's built-in selector, input, and editor dialogs across TUI and RPC modes.
+
 ## [0.5.3] - 2026-08-17
 
 ### Fixed
