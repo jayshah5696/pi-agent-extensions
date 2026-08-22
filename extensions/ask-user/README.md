@@ -65,9 +65,9 @@ Choose one from a list.
 }
 ```
 
-### Multi-Select (Basic)
+### Multi-Select (Deferred)
 
-Choose multiple options (currently shows sequentially).
+The `multiSelect` flag is retained for print-mode consumers. Interactive mode currently selects one option.
 
 ```typescript
 {
@@ -96,15 +96,17 @@ pi -p @.pi/pending-questions.json "I prefer PostgreSQL"
 pi -c
 ```
 
-## RPC Mode
+## Dialog modes
 
-When pi runs with `--mode rpc` (stdout is not a TTY), the UI is proxied to the
-host application, which only supports simple dialogs. In this mode:
+Interactive TUI and RPC mode both use Pi's built-in dialog API:
 
 - Option questions use `ctx.ui.select()` — option descriptions are folded into
   the label text, and an "Other" option is appended
-- "Other" and text questions use `ctx.ui.input()` as a follow-up
+- Text questions use `ctx.ui.input()`
+- "Other" uses Pi's multiline editor in TUI mode and `ctx.ui.input()` in RPC mode
 - Multiple questions are asked sequentially
+
+Pi's built-in dialogs wrap titles and options to the terminal or host UI.
 
 ## Implementation Status
 
@@ -114,11 +116,9 @@ host application, which only supports simple dialogs. In this mode:
 - ✅ Schema validation
 - ✅ Print mode (pending file)
 - ✅ RPC mode (select/input dialogs)
-- ✅ Basic interactive mode (ctx.ui helpers)
-- ✅ Custom rendering
-- ⏸️ Custom TUI components (awaiting feedback)
-- ⏸️ Tabbed multi-question UI (shows sequentially for now)
-- ⏸️ True multi-select (single-select behavior currently)
+- ✅ Interactive mode using Pi's built-in dialogs
+- ✅ Sequential multi-question flow
+- ⏸️ True interactive multi-select (single-select behavior currently)
 
 ## For Developers
 
@@ -128,10 +128,10 @@ npm test
 ```
 
 **Manual testing:**
-See [docs/manual-testing.md](../docs/manual-testing.md)
+See [manual-testing.md](../../docs/guides/manual-testing.md)
 
-**Spec:**
-See [docs/ask-user.md](../docs/ask-user.md) for full specification
+**Reference:**
+See [Extensions Reference](../../docs/extensions.md#2-ask-user-ask_user)
 
 **Type Definitions:**
 See `types.ts` for schema details

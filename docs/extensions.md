@@ -50,7 +50,7 @@ Allows the LLM to request structured input from the user during execution.
     *   **Text & Select Prompts:** Supports simple open-ended text input and option selection lists.
     *   **Always-Available "Other":** Option lists automatically contain a free-text "Other" selection.
     *   **Modes:**
-        *   *Interactive (TUI):* Renders an interactive Select/Editor.
+        *   *Interactive (TUI):* Uses Pi's built-in wrapping selector, input, and editor dialogs.
         *   *Print (Fallback):* Non-interactive mode writes pending questions to `.pi/pending-questions.json` for async response.
         *   *RPC:* Supports RPC integrations.
     *   **Persistence:** Persistent answer history stored inside the session.

@@ -66,7 +66,8 @@ Extensions: sessions, ask_user, handoff, notify, context, files, review,
    Ask me which database I prefer: PostgreSQL, SQLite, or MongoDB
    ```
    Verify a list selection UI opens, with an "Other (type your answer)" option.
-3. Select "Other" and type your own database name. Verify it transitions cleanly to an inline text editor.
+3. Repeat with a deliberately long question, option label, and option description in a narrow terminal. Verify each wraps without losing text.
+4. Select "Other" and type your own database name. Verify it transitions cleanly to Pi's built-in text editor.
 
 ### Test Instructions (Print Mode)
 1. Run Pi in non-interactive print mode:
