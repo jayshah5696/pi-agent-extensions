@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Release dates match the
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-08-22
+
 ### Fixed
 - Fixed `ask_user` interactive questions, option labels, and descriptions being truncated instead of wrapped in narrow terminals by using Pi's built-in wrapping dialogs (#52, thanks @SimonHergott).
 
