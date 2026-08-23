@@ -1,7 +1,25 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { parseJsonWithRepair } from "@earendil-works/pi-ai";
 import { Text } from "@earendil-works/pi-tui";
 import { AskUserParams, type AskUserDetails, type AskUserResult } from "./types.js";
 import { executeAskUser } from "./tool.js";
+
+// Some models send `questions` as a JSON-encoded string instead of an array,
+// occasionally with raw control characters (real newlines/tabs) unescaped
+// inside string values. Repair before validation, mirroring pi core's
+// prepareEditArguments handling for the edit tool. Inputs that stay
+// unparseable are passed through untouched.
+export function prepareAskUserArguments(input: unknown): unknown {
+  if (!input || typeof input !== "object") return input;
+  const args = input as { questions?: unknown };
+  if (typeof args.questions === "string") {
+    try {
+      const parsed: unknown = parseJsonWithRepair(args.questions);
+      if (Array.isArray(parsed)) args.questions = parsed;
+    } catch {}
+  }
+  return args;
+}
 
 export default function askUserExtension(pi: ExtensionAPI) {
   pi.registerTool({
@@ -25,6 +43,8 @@ Guidelines:
 - Don't re-ask questions already answered in this session`,
 
     parameters: AskUserParams,
+
+    prepareArguments: prepareAskUserArguments,
 
     async execute(toolCallId, params, signal, onUpdate, ctx) {
       const result: AskUserResult = await executeAskUser(params, ctx);
