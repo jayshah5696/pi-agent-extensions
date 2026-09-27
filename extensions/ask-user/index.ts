@@ -9,8 +9,8 @@ import { executeAskUser } from "./tool.js";
 // inside string values. Repair before validation, mirroring pi core's
 // prepareEditArguments handling for the edit tool. Inputs that stay
 // unparseable are passed through untouched.
-export function prepareAskUserArguments(input: unknown): unknown {
-  if (!input || typeof input !== "object") return input;
+export function prepareAskUserArguments(input: unknown): AskUserParams {
+  if (!input || typeof input !== "object") return input as AskUserParams;
   const args = input as { questions?: unknown };
   if (typeof args.questions === "string") {
     try {
@@ -18,7 +18,7 @@ export function prepareAskUserArguments(input: unknown): unknown {
       if (Array.isArray(parsed)) args.questions = parsed;
     } catch {}
   }
-  return args;
+  return args as AskUserParams;
 }
 
 export default function askUserExtension(pi: ExtensionAPI) {
