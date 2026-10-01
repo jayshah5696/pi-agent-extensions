@@ -62,7 +62,8 @@
   "peerDependencies": {
     "@earendil-works/pi-ai": ">=0.80.10",
     "@earendil-works/pi-coding-agent": ">=0.80.10",
-    "@earendil-works/pi-tui": ">=0.80.10"
+    "@earendil-works/pi-tui": ">=0.80.10",
+    "typebox": "*"
   },
   "devDependencies": {
     "@earendil-works/pi-ai": "^0.80.10",
@@ -82,7 +83,6 @@
     "release:publish": "./scripts/publish-release.sh"
   },
   "dependencies": {
-    "acorn": "^8.16.0",
-    "typebox": "1.1.38"
+    "acorn": "^8.16.0"
   }
 }
