@@ -4,6 +4,9 @@ All notable changes to this project are documented here. Release dates match the
 
 ## [Unreleased]
 
+### Fixed
+- Moved `typebox` from `dependencies` to `peerDependencies` with a `"*"` range so the pi host stops warning about a duplicate host-provided module (#55, thanks @why19910522).
+
 ## [0.5.4] - 2026-08-22
 
 ### Fixed
