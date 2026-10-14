@@ -31,7 +31,7 @@ extensions/
 
 ### Shared Patterns
 
-- **TypeBox schemas** (`@sinclair/typebox`) for runtime validation with TypeScript type inference — see `types.ts` in each extension
+- **TypeBox schemas** (`typebox`) for runtime validation with TypeScript type inference — see `types.ts` in each extension
 - **Mode-based execution**: Extensions detect `ctx.hasUI` to switch between interactive TUI mode and print/file-based fallback mode
 - **ESM imports with `.js` extensions**: All relative imports use `.js` suffix (e.g., `import { foo } from "./module.js"`)
 - **Signal-based cancellation**: Long operations accept `AbortSignal` for cancellable workflows

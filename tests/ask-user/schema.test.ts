@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { Value } from "@sinclair/typebox/value";
+import { Value } from "typebox/value";
 import { AskUserParams, QuestionSchema } from "../../extensions/ask-user/types.js";
 
 describe("QuestionSchema validation", () => {

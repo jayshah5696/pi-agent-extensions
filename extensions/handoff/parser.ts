@@ -1,4 +1,4 @@
-import { Value } from "@sinclair/typebox/value";
+import { Value } from "typebox/value";
 import {
   ExtractionOutputSchema,
   type ExtractionOutput,
@@ -58,7 +58,7 @@ export function parseExtractionResponse(text: string): ParseResult {
     const errors = [...Value.Errors(ExtractionOutputSchema, parsed)];
     const errorMessages = errors
       .slice(0, 3)
-      .map((e) => `${e.path}: ${e.message}`)
+      .map((e) => `${e.instancePath}: ${e.message}`)
       .join("; ");
     return {
       success: false,

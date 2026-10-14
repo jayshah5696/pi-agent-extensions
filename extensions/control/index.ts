@@ -41,7 +41,7 @@ import { complete, type Model, type Api, type UserMessage, type TextContent } fr
 import { getRequestAuth, hasRequestAuth } from "../shared/auth.js";
 import { StringEnum } from "@earendil-works/pi-ai/compat";
 import { Box, Container, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import crypto from "node:crypto";
 import { promises as fs } from "node:fs";
 import * as net from "node:net";
