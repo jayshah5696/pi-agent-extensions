@@ -1,5 +1,5 @@
-import type { Static } from "@sinclair/typebox";
-import { Type } from "@sinclair/typebox";
+import type { Static } from "typebox";
+import { Type } from "typebox";
 
 /**
  * Question schema - flexible structure supporting text input and options

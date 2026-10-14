@@ -94,6 +94,7 @@ describe("parseExtractionResponse", () => {
     assert.ok(!result.success);
     assert.ok(result.error);
     assert.ok(result.error.includes("validation"));
+    assert.ok(result.error.includes("relevantFiles"), "error should include the failing instance path");
   });
 
   it("returns error for unparseable text", () => {

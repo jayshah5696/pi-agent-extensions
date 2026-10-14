@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Release dates match the
 
 ## [Unreleased]
 
+### Fixed
+- Removed the extension-load warning by declaring `typebox` as a host-provided `peerDependencies` entry (`"*"`) instead of a runtime dependency, so Pi no longer installs a duplicate module; all TypeBox imports now use the host-provided `typebox` package.
+- Fixed handoff schema-validation errors reporting `undefined` instead of the failing field path by reading `instancePath` from TypeBox validation errors.
+
 ## [0.5.4] - 2026-08-22
 
 ### Fixed

@@ -62,14 +62,15 @@
   "peerDependencies": {
     "@earendil-works/pi-ai": ">=0.80.10",
     "@earendil-works/pi-coding-agent": ">=0.80.10",
-    "@earendil-works/pi-tui": ">=0.80.10"
+    "@earendil-works/pi-tui": ">=0.80.10",
+    "typebox": "*"
   },
   "devDependencies": {
     "@earendil-works/pi-ai": "^0.80.10",
     "@earendil-works/pi-coding-agent": "^0.80.10",
     "@earendil-works/pi-tui": "^0.80.10",
-    "@sinclair/typebox": "^0.34.48",
     "tsx": "^4.21.0",
+    "typebox": "^1.3.27",
     "typescript": "^5.9.3"
   },
   "scripts": {
@@ -82,7 +83,6 @@
     "release:publish": "./scripts/publish-release.sh"
   },
   "dependencies": {
-    "acorn": "^8.16.0",
-    "typebox": "1.1.38"
+    "acorn": "^8.16.0"
   }
 }
