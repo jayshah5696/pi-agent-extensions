@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Release dates match the
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-10-14
+
 ### Fixed
 - Removed the extension-load warning by declaring `typebox` as a wildcard peer dependency and replacing legacy TypeBox imports with the host-provided package (#58, thanks @SimonHergott; also thanks @meirm, @Hello-P1ers, and @why19910522 for the related fixes and report).
 - Fixed handoff schema-validation errors reporting `undefined` instead of the failing field path (#58).
