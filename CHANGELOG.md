@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Release dates match the
 
 ## [Unreleased]
 
+### Fixed
+- Fixed powerline footer extension statuses disappearing and truncating the clock. Status text now has reserved space or wraps onto separate lines when it cannot fit beside the model and clock (#60, reported by @sunbird89629).
+- Updated the Pi development packages to 1.3.0, resolving the `brace-expansion` and `undici` security findings without dependency overrides (#59, following the security work in #57 by @Hello-P1ers).
+
+### Added
+- Added CI checks on Node.js 22 and 24 for tests, workflow type checking, and the full dependency security audit.
+
 ## [0.5.5] - 2026-10-14
 
 ### Fixed
