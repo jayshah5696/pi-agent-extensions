@@ -1,5 +1,5 @@
 import type { ExtensionAPI, ExtensionContext, ReadonlyFooterDataProvider } from "@earendil-works/pi-coding-agent";
-import { type Component, type Theme, type TUI, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { type Component, type Theme, type TUI, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import * as child_process from "child_process";
 
 class PowerlineFooter implements Component {
@@ -11,7 +11,7 @@ class PowerlineFooter implements Component {
 	private sessionStartTime: number;
 	private disposed = false;
 	private cwd: string;
-	private lastRenderedLine = "";
+	private lastRenderedLines = [""];
 	private lastRenderedMinute = -1;
 	private lastShortDir: string;
 	private lastModelShort = "unknown";
@@ -206,7 +206,7 @@ class PowerlineFooter implements Component {
 		const OVERLAY2 = "\x1b[38;5;103m";
 
 		if (this.disposed) {
-			return [this.fitToWidth(this.lastRenderedLine || "", width)];
+			return this.lastRenderedLines.map((line) => this.fitToWidth(line, width));
 		}
 
 		const shortDir = this.getShortDir();
@@ -256,37 +256,35 @@ class PowerlineFooter implements Component {
 		const right = `${OVERLAY2}${modelShort}${RESET} ${contextInfo}${costInfo}${durationInfo}${envInfo} ${DIM}${currentTime}${RESET}`;
 		const leftWidth = visibleWidth(left);
 		const rightWidth = visibleWidth(right);
+		const statusText = Array.from(this.footerData.getExtensionStatuses().values()).filter(Boolean).join(" ");
+		const suffix = statusText ? ` ${DIM}|${RESET} ${statusText}` : "";
+		const suffixWidth = visibleWidth(suffix);
+		// Keep the clock and model intact; use separate status lines when they cannot share a row.
+		const inlineStatuses = suffixWidth > 0 && rightWidth + suffixWidth <= width;
+		const bodyWidth = inlineStatuses ? width - suffixWidth : width;
 		const minPadding = 1;
 		let line = "";
 
-		if (leftWidth + minPadding + rightWidth <= width) {
-			line = left + " ".repeat(width - leftWidth - rightWidth) + right;
+		if (leftWidth + minPadding + rightWidth <= bodyWidth) {
+			line = left + " ".repeat(bodyWidth - leftWidth - rightWidth) + right;
 		} else {
-			const availableForLeft = Math.max(0, width - rightWidth - minPadding);
+			const availableForLeft = Math.max(0, bodyWidth - rightWidth - minPadding);
 			if (availableForLeft > 0) {
 				const truncatedLeft = this.fitToWidth(left, availableForLeft);
 				const truncatedLeftWidth = visibleWidth(truncatedLeft);
-				line = truncatedLeft + " ".repeat(Math.max(minPadding, width - truncatedLeftWidth - rightWidth)) + right;
+				line = truncatedLeft + " ".repeat(Math.max(minPadding, bodyWidth - truncatedLeftWidth - rightWidth)) + right;
 			} else {
-				line = this.fitToWidth(right, width);
+				line = this.fitToWidth(right, bodyWidth);
 			}
 		}
 
-		const statuses = this.footerData.getExtensionStatuses();
-		if (statuses.size > 0) {
-			const parts: string[] = [];
-			for (const [, text] of statuses) {
-				if (text) parts.push(text);
-			}
-			if (parts.length > 0) {
-				line = this.fitToWidth(`${line} ${DIM}|${RESET} ${parts.join(" ")}`, width);
-			}
+		const lines = [this.fitToWidth(line, bodyWidth) + (inlineStatuses ? suffix : "")];
+		if (statusText && !inlineStatuses && width > 0) {
+			lines.push(...wrapTextWithAnsi(statusText, width));
 		}
-
-		const fittedLine = this.fitToWidth(line, width);
-		this.lastRenderedLine = fittedLine;
+		this.lastRenderedLines = lines.map((text) => this.fitToWidth(text, width));
 		this.lastRenderedMinute = new Date().getMinutes();
-		return [fittedLine];
+		return this.lastRenderedLines;
 	}
 }
 

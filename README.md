@@ -223,8 +223,8 @@ For installation, manual testing, and setup guides, see the [Documentation Index
 This repository uses [just](https://github.com/casey/just) as a command runner for local testing and package releases.
 
 ```bash
-# Install package dependencies
-npm install
+# Install the locked development dependencies
+npm ci
 
 # Run the full test suite
 just test
@@ -245,9 +245,13 @@ just release patch
 If you do not have `just` installed, you can use the equivalent `npm` wrapper scripts:
 ```bash
 npm test
+npm run typecheck:workflow
+npm audit
 npm run release:check
 npm run release:publish -- patch
 ```
+
+GitHub Actions runs `npm ci`, `npm test`, `npm run typecheck:workflow`, and `npm audit` on Node.js 22 and 24 for pull requests and pushes to `main`. The audit includes development dependencies. The development packages use Pi 1.3.0 or newer; the published peer dependency minimum remains unchanged.
 
 ## Acknowledgments
 
