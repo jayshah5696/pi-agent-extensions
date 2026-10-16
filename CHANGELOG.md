@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Release dates match the
 
 ## [Unreleased]
 
+## [0.5.6] - 2026-10-16
+
 ### Fixed
 - Fixed a `cwd-history` race that could crash `pi --mode rpc` and T3 Code with `pi acp` during session replacement (#62). Custom editor history now runs only in terminal mode. Pending history loads are invalidated on shutdown, and late failures no longer terminate Pi.
 - Fixed powerline footer extension statuses disappearing and truncating the clock. Status text now has reserved space or wraps onto separate lines when it cannot fit beside the model and clock (#60, reported by @sunbird89629).
