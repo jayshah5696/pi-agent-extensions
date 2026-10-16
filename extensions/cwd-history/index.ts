@@ -3,6 +3,7 @@ import { CustomEditor } from "@earendil-works/pi-coding-agent";
 import path from "node:path";
 import os from "node:os";
 import fs from "node:fs/promises";
+import type { Dirent } from "node:fs";
 
 /**
  * Extension that seeds the prompt editor history with recent prompts from the
@@ -105,7 +106,7 @@ async function loadPromptHistoryForCwd(cwd: string, excludeSessionFile?: string)
 	const resolvedExclude = excludeSessionFile ? path.resolve(excludeSessionFile) : undefined;
 	const prompts: PromptEntry[] = [];
 
-	let entries: fs.Dirent[] = [];
+	let entries: Dirent[] = [];
 	try {
 		entries = await fs.readdir(sessionDir, { withFileTypes: true });
 	} catch {
@@ -205,7 +206,8 @@ function setEditorHistory(pi: ExtensionAPI, ctx: ExtensionContext, history: Prom
 }
 
 function applyEditorWithHistory(pi: ExtensionAPI, ctx: ExtensionContext) {
-	if (!ctx.hasUI) return;
+	// RPC has UI support, but cannot install custom terminal editors.
+	if (ctx.mode !== "tui") return;
 
 	const sessionFile = ctx.sessionManager.getSessionFile();
 	const currentEntries = ctx.sessionManager.getBranch();
@@ -216,9 +218,7 @@ function applyEditorWithHistory(pi: ExtensionAPI, ctx: ExtensionContext) {
 	const initialText = ctx.ui.getEditorText();
 	setEditorHistory(pi, ctx, immediateHistory);
 
-	// ctx is invalidated when the session is replaced (fork, new, switch). Pi
-	// throws on any ctx access after that, and an unhandled rejection here kills
-	// RPC mode. Read ctx.cwd before the await and swallow late failures.
+	// Keep plain data, not a context lookup, across the asynchronous load.
 	const cwd = ctx.cwd;
 	void (async () => {
 		try {
@@ -229,7 +229,7 @@ function applyEditorWithHistory(pi: ExtensionAPI, ctx: ExtensionContext) {
 			if (historiesMatch(history, immediateHistory)) return;
 			setEditorHistory(pi, ctx, history);
 		} catch {
-			// Stale ctx: the session was replaced while history loaded. Nothing to update.
+			// A late history update must not terminate Pi if its context was replaced.
 		}
 	})();
 }
