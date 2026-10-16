@@ -216,18 +216,30 @@ function applyEditorWithHistory(pi: ExtensionAPI, ctx: ExtensionContext) {
 	const initialText = ctx.ui.getEditorText();
 	setEditorHistory(pi, ctx, immediateHistory);
 
+	// ctx is invalidated when the session is replaced (fork, new, switch). Pi
+	// throws on any ctx access after that, and an unhandled rejection here kills
+	// RPC mode. Read ctx.cwd before the await and swallow late failures.
+	const cwd = ctx.cwd;
 	void (async () => {
-		const previousPrompts = await loadPromptHistoryForCwd(ctx.cwd, sessionFile ?? undefined);
-		if (currentLoad !== loadCounter) return;
-		if (ctx.ui.getEditorText() !== initialText) return;
-		const history = buildHistoryList(currentPrompts, previousPrompts);
-		if (historiesMatch(history, immediateHistory)) return;
-		setEditorHistory(pi, ctx, history);
+		try {
+			const previousPrompts = await loadPromptHistoryForCwd(cwd, sessionFile ?? undefined);
+			if (currentLoad !== loadCounter) return;
+			if (ctx.ui.getEditorText() !== initialText) return;
+			const history = buildHistoryList(currentPrompts, previousPrompts);
+			if (historiesMatch(history, immediateHistory)) return;
+			setEditorHistory(pi, ctx, history);
+		} catch {
+			// Stale ctx: the session was replaced while history loaded. Nothing to update.
+		}
 	})();
 }
 
 export default function (pi: ExtensionAPI) {
 	pi.on("session_start", (_event, ctx) => {
 		applyEditorWithHistory(pi, ctx);
+	});
+	// Drop any in-flight history load so it never touches a replaced session's ctx.
+	pi.on("session_shutdown", () => {
+		loadCounter++;
 	});
 }

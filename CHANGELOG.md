@@ -5,6 +5,7 @@ All notable changes to this project are documented here. Release dates match the
 ## [Unreleased]
 
 ### Fixed
+- Fixed `cwd-history` crashing `pi --mode rpc` (and T3 Code with `pi acp`) on every fork, new session and session switch. The async history load touched a stale extension `ctx` after the session was replaced. It now reads `cwd` up front, ignores late failures, and cancels on `session_shutdown`.
 - Fixed powerline footer extension statuses disappearing and truncating the clock. Status text now has reserved space or wraps onto separate lines when it cannot fit beside the model and clock (#60, reported by @sunbird89629).
 - Updated the Pi development packages to 1.3.0, resolving the `brace-expansion` and `undici` security findings without dependency overrides (#59, following the security work in #57 by @Hello-P1ers).
 
