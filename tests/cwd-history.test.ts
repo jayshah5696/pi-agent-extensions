@@ -10,7 +10,7 @@ import cwdHistory from "../extensions/cwd-history/index.js";
 type Handler = (event: unknown, ctx: ExtensionContext) => unknown;
 type EditorFactory = NonNullable<Parameters<ExtensionContext["ui"]["setEditorComponent"]>[0]>;
 
-function createHarness() {
+function createHarness(options: { base?: EditorFactory } = {}) {
 	const handlers = new Map<string, Handler>();
 	cwdHistory({
 		on: (name: string, handler: Handler) => handlers.set(name, handler),
@@ -42,6 +42,8 @@ function createHarness() {
 					installs++;
 				},
 				getEditorText: () => { onGetText(); return text; },
+				// Pi hands back whatever factory is installed now, or undefined when none is.
+				getEditorComponent: () => editorFactory ?? options.base,
 			};
 		},
 	} as unknown as ExtensionContext;
@@ -143,6 +145,51 @@ describe("cwd-history extension", () => {
 			}
 		});
 	}
+
+	it("keeps the editor another extension installed and only seeds its history", { timeout: 5_000 }, async (t) => {
+		const home = await fs.mkdtemp(path.join(os.tmpdir(), "cwd-history-compose-"));
+		t.after(() => fs.rm(home, { recursive: true, force: true }));
+		t.mock.method(os, "homedir", () => home);
+		const sessionDir = path.join(home, ".pi", "agent", "sessions", "--cwd-history-test--");
+		await fs.mkdir(sessionDir, { recursive: true });
+		await fs.writeFile(path.join(sessionDir, "previous.jsonl"), JSON.stringify({
+			type: "message", message: {
+				role: "user", timestamp: 1, content: [{ type: "text", text: "previous prompt" }],
+			},
+		}) + "\n");
+		const readdir = fs.readdir;
+		let release!: () => void;
+		const pending = new Promise<void>((resolve) => { release = resolve; });
+		t.mock.method(fs, "readdir", async () => {
+			await pending;
+			return readdir(sessionDir, { withFileTypes: true });
+		});
+
+		const seeded: string[] = [];
+		let baseCalls = 0;
+		const inner = {
+			addToHistory: (text: string) => seeded.push(text),
+			handleInput: () => {},
+			getText: () => "",
+		};
+		const base: EditorFactory = () => {
+			baseCalls++;
+			return inner as unknown as ReturnType<EditorFactory>;
+		};
+
+		const harness = createHarness({ base });
+		harness.start();
+		const checkedText = new Promise<void>((resolve) => harness.onGetText(resolve));
+		release();
+		await checkedText;
+		await setImmediate();
+
+		assert.equal(harness.installs, 2, "late history still reinstalls the composed factory");
+		const editor = harness.createEditor();
+		assert.equal(editor, inner, "the editor another extension installed stays mounted");
+		assert.equal(baseCalls, 1, "our own factory must not be nested as the base editor");
+		assert.deepEqual(seeded, ["previous prompt", "current prompt"]);
+	});
 
 	it("does not access the old context after shutdown", async (t) => {
 		const { release } = deferHistoryRead(t);

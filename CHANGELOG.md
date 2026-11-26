@@ -4,6 +4,9 @@ All notable changes to this project are documented here. Release dates match the
 
 ## [Unreleased]
 
+### Fixed
+- Fixed `cwd-history` replacing the prompt editor installed by another extension. It now composes with the factory returned by `ctx.ui.getEditorComponent()`, seeds that editor's history, and returns it unchanged, so earlier editor decorators keep their key handling and styling (#64). The editor border tint still applies only when `cwd-history` installs its own editor.
+
 ## [0.5.6] - 2026-10-16
 
 ### Fixed
