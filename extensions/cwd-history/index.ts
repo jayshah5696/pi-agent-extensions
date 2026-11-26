@@ -17,6 +17,8 @@ interface PromptEntry {
 	timestamp: number;
 }
 
+type EditorFactory = NonNullable<Parameters<ExtensionContext["ui"]["setEditorComponent"]>[0]>;
+
 class HistoryEditor extends CustomEditor {
 	private lockedBorder = false;
 	private _borderColor?: (text: string) => string;
@@ -185,8 +187,29 @@ function historiesMatch(a: PromptEntry[], b: PromptEntry[]): boolean {
 	return true;
 }
 
+/** Marks our factory so a later install reuses the same base editor instead of nesting ours. */
+const BASE_EDITOR_FACTORY = Symbol.for("pi-agent-extensions:cwd-history:base-editor");
+
 function setEditorHistory(pi: ExtensionAPI, ctx: ExtensionContext, history: PromptEntry[]) {
-	ctx.ui.setEditorComponent((tui, theme, keybindings) => {
+	const installed = typeof ctx.ui.getEditorComponent === "function" ? ctx.ui.getEditorComponent() : undefined;
+	// After the first install Pi returns our own factory. Keep the editor that was configured
+	// before us, so history is added to it rather than replacing it with ours.
+	const base =
+		installed && Object.prototype.hasOwnProperty.call(installed, BASE_EDITOR_FACTORY)
+			? (installed as { [BASE_EDITOR_FACTORY]?: EditorFactory | null })[BASE_EDITOR_FACTORY] ?? undefined
+			: installed;
+
+	const factory: EditorFactory = (tui, theme, keybindings) => {
+		// Compose with an editor another extension installed: seed its history and hand it back
+		// unchanged, so its key handling and own styling stay mounted.
+		if (base) {
+			const editor = base(tui, theme, keybindings);
+			for (const prompt of history) {
+				(editor as { addToHistory?: (text: string) => void }).addToHistory?.(prompt.text);
+			}
+			return editor;
+		}
+
 		const editor = new HistoryEditor(tui, theme, keybindings);
 		const borderColor = (text: string) => {
 			const isBashMode = editor.getText().trimStart().startsWith("!");
@@ -202,7 +225,10 @@ function setEditorHistory(pi: ExtensionAPI, ctx: ExtensionContext, history: Prom
 			editor.addToHistory?.(prompt.text);
 		}
 		return editor;
-	});
+	};
+
+	Object.defineProperty(factory, BASE_EDITOR_FACTORY, { value: base ?? null, enumerable: false });
+	ctx.ui.setEditorComponent(factory);
 }
 
 function applyEditorWithHistory(pi: ExtensionAPI, ctx: ExtensionContext) {
