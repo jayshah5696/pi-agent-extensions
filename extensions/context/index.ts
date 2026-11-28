@@ -119,12 +119,20 @@ type SkillIndexEntry = {
 	skillDir: string;
 };
 
+type CommandWithProvenance = { path?: string; sourceInfo?: { path?: string } };
+
+/** Current pi exposes provenance as `sourceInfo.path`; older versions used a top-level `path`. */
+export function getCommandSourcePath(command: CommandWithProvenance): string | undefined {
+	return command.sourceInfo?.path ?? command.path;
+}
+
 function buildSkillIndex(pi: ExtensionAPI, cwd: string): SkillIndexEntry[] {
 	return pi
 		.getCommands()
 		.filter((c) => c.source === "skill")
 		.map((c) => {
-			const p = c.path ? normalizeReadPath(c.path, cwd) : "";
+			const sourcePath = getCommandSourcePath(c);
+			const p = sourcePath ? normalizeReadPath(sourcePath, cwd) : "";
 			return {
 				name: normalizeSkillName(c.name),
 				skillFilePath: p,
@@ -479,7 +487,7 @@ export default function contextExtension(pi: ExtensionAPI) {
 
 			const extensionsByPath = new Map<string, string[]>();
 			for (const c of extensionCmds) {
-				const p = c.path ?? "<unknown>";
+				const p = getCommandSourcePath(c) ?? "<unknown>";
 				const arr = extensionsByPath.get(p) ?? [];
 				arr.push(c.name);
 				extensionsByPath.set(p, arr);

@@ -4,6 +4,9 @@ All notable changes to this project are documented here. Release dates match the
 
 ## [Unreleased]
 
+### Fixed
+- Fixed `/context-simple` listing loaded extensions as `<unknown>` and failing to locate skill directories on current Pi, which exposes command provenance as `sourceInfo.path` instead of a top-level `path`. The legacy `path` field is still used as a fallback.
+
 ## [0.5.6] - 2026-10-16
 
 ### Fixed
